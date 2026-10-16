@@ -23,6 +23,16 @@ endif()
 find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets Network)
 qt_standard_project_setup()
 
+# Qt 6.8's FindWrapOpenGL still links the AGL framework, which the macOS 26 SDK no longer
+# ships ("ld: framework 'AGL' not found"). Nothing here uses it, so drop it.
+if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
+    get_target_property(wrap_opengl_libs WrapOpenGL::WrapOpenGL INTERFACE_LINK_LIBRARIES)
+    if(wrap_opengl_libs)
+        list(FILTER wrap_opengl_libs EXCLUDE REGEX "(^|[ /])AGL(\\.framework)?$")
+        set_target_properties(WrapOpenGL::WrapOpenGL PROPERTIES INTERFACE_LINK_LIBRARIES "${wrap_opengl_libs}")
+    endif()
+endif()
+
 # Sources by layer (see README): includes are written relative to src/,
 # e.g. #include "spotify/SpotifyClient.h".
 qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
