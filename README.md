@@ -1,7 +1,7 @@
 # EdgeWidget
 
 Міні-плеєр Spotify у панелі на краю екрана, у стилі Android Edge Panel (Qt 6 / C++).
-Windows 10/11; порт на macOS 12+ — у тому ж коді, див. «Збірка на macOS».
+Windows 10/11; порти на macOS 12+ і Linux — у тому ж коді, див. «Збірка на macOS» / «Збірка на Linux».
 
 - на краю екрана видно тільки язичок; клік або свайп всередину — панель виїжджає,
   клік поза нею / `Esc` — ховається; вертикальне перетягування язичка змінює позицію;
@@ -28,6 +28,7 @@ src/
   platform/     що відрізняється між ОС: інтерфейси (*.h) і спільне
     win/        реалізації для Windows (WinRT, Win32, DPAPI, реєстр)
     mac/        реалізації для macOS (AppleScript, AppKit, Keychain, LaunchAgent)
+    linux/      реалізації для Linux (MPRIS через D-Bus, libsecret, XDG autostart, X11)
 ```
 
 Правила:
@@ -35,7 +36,7 @@ src/
 - **Залежності йдуть в один бік:** `ui → device → playback → spotify → platform → app`. Нижній шар
   не знає про верхні: `spotify` — про відтворення й інтерфейс, `app` — ні про кого. Новий код
   кладеться в шар, який йому відповідає.
-- **Код під конкретну ОС — тільки в `platform/win|mac`.** Решта коду не містить `#ifdef`
+- **Код під конкретну ОС — тільки в `platform/win|mac|linux`.** Решта коду не містить `#ifdef`
   платформи й не підключає `windows.h` / AppKit; спільний інтерфейс — у `platform/*.h`.
 - **Інклуди пишуться від `src/`** з назвою папки: `#include "spotify/SpotifyClient.h"`,
   щоб з першого рядка файлу було видно, на який шар він спирається.
@@ -66,12 +67,14 @@ src/
 | `spotify` | `SpotifyAuth` | вхід OAuth PKCE, токени (`SecretStore`) |
 | `spotify` | `SpotifyClient` | Spotify Web API: бібліотека, треки, відтворення |
 | `spotify` | `SpotifyLauncher` | тихий запуск десктопного Spotify (стан «запускаю…») |
-| `platform` | `LocalPlayer` | Spotify на цьому комп'ютері: Windows — медіасесії (GSMTC), macOS — AppleScript Spotify |
-| `platform` | `WindowLayer` | шар вікна: під / поверх вікон / поверх усього; Windows — Win32 + повний екран, macOS — рівні NSWindow |
-| `platform` | `SecretStore` | секрети: Windows — DPAPI у QSettings, macOS — Keychain |
+| `platform` | `LocalPlayer` | Spotify на цьому комп'ютері: Windows — медіасесії (GSMTC), macOS — AppleScript Spotify, Linux — MPRIS |
+| `platform` | `WindowLayer` | шар вікна: під / поверх вікон / поверх усього; Windows — Win32 + повний екран, macOS — рівні NSWindow, Linux — «поверх» X11 |
+| `platform` | `SecretStore` | секрети: Windows — DPAPI у QSettings, macOS — Keychain, Linux — Secret Service (libsecret) |
 | `platform` | `SpotifyApp` | чи запущено Spotify і тихий запуск (`--minimized` / приховано у фоні) |
-| `platform` | `Autostart` | автозапуск: Windows — `HKCU\…\Run`, macOS — LaunchAgent |
-| `platform` | `AppVolume` | гучність Spotify у мікшері Windows (запасний варіант без входу); на macOS немає |
+| `platform` | `Autostart` | автозапуск: Windows — `HKCU\…\Run`, macOS — LaunchAgent, Linux — `~/.config/autostart` |
+| `platform` | `AppVolume` | гучність Spotify у мікшері Windows (запасний варіант без входу); на macOS / Linux немає |
+| `platform` | `AppInit` | до створення `QApplication`: Linux під Wayland іде через XWayland |
+| `platform` | `CoverFetcher` | обкладинка за https-URL (macOS, Linux) |
 
 Нова мова — словник у `app/Localization.cpp` (з'явиться в списку налаштувань сама).
 
@@ -193,6 +196,44 @@ Gatekeeper не дасть покупцям запустити програму 
 
 Іконка `resources/EdgeWidget.icns` генерується разом з `.ico` (`scripts/make-icon.ps1`) і
 лежить у репозиторії, тож на маку її робити не треба.
+
+## Збірка на Linux
+
+Перевірено в Ubuntu 22.04 (WSL): компіляція з Qt 6.8.3, AppImage, запуск під X11 (Xvfb) з
+тестовим MPRIS-сервісом і тестовим програвачем — трек, пауза, перемотка, шафл, повтор, кнопки
+програвача. Зі справжнім Spotify під Linux і на реальному робочому столі ще не запускалось.
+
+**AppImage** — один файл для Arch, Ubuntu, Fedora та ін. (Qt усередині, динамічно — LGPL ок):
+
+```bash
+QT_DIR=~/Qt/6.8.3/gcc_64 bash scripts/build-linux.sh
+```
+
+→ `dist-linux/EdgeWidget-<версія>-x86_64.AppImage`. Потрібні компілятор C++17, CMake, Qt 6.5+
+(системний або з aqtinstall; без `QT_DIR` — системний) і заголовки libsecret
+(`libsecret-1-dev` / `libsecret-devel` / `libsecret`). Збирати на найстарішому дистрибутиві, який
+треба підтримати: AppImage працює на його glibc і новіших (CI збирає на Ubuntu 22.04).
+linuxdeploy скрипт завантажує сам.
+
+**Arch (AUR):** `packaging/linux/arch/PKGBUILD` збирає з git під системний Qt
+(`cd packaging/linux/arch && makepkg -si`). Для AUR — вказати в `source=` тег релізу.
+
+`cmake --install` кладе все за XDG: `bin/edgewidget`, `share/applications/edgewidget.desktop`,
+`share/icons/hicolor/256x256/apps/edgewidget.png` — так само можна зробити `.deb` / `.rpm`.
+
+Що працює інакше:
+
+- **Spotify на цьому комп'ютері** — MPRIS (`org.mpris.MediaPlayer2.spotify`, будь-яка збірка:
+  .deb, snap, Flatpak). Деякі збірки Spotify не віддають шафл / повтор через MPRIS і завжди кажуть
+  позицію 0 — тоді позиція рахується від останнього відомого місця.
+- **Wayland** — віджет запускається через XWayland (`AppInit`), бо під Wayland вікно не може саме
+  стати на край екрана. Без XWayland — звичайне вікно Wayland. `QT_QPA_PLATFORM` вручну має перевагу.
+- **Шари вікна** — «поверх вікон» = «поверх усього»: віконний менеджер сам ставить повноекранне
+  вікно над «завжди поверх».
+- **Токен Spotify** — у Secret Service (GNOME Keyring, KWallet); якщо його немає — у файлі налаштувань.
+- **Автостарт** — `~/.config/autostart/edgewidget.desktop` (для AppImage — шлях до самого файлу).
+- **Трей** — на GNOME (Fedora) без розширення AppIndicator іконки в треї немає; панель працює й без неї.
+- **Гучність** — тільки через Web API.
 
 ## Як продавати без комерційної ліцензії Qt (LGPLv3)
 

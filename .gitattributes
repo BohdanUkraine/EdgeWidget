@@ -1,5 +1,8 @@
 * text=auto
-# Run on macOS runners: must keep LF even in a Windows checkout.
+# Run on macOS / Linux: must keep LF even in a Windows checkout.
 *.sh text eol=lf
 *.icns binary
 *.ico binary
+PKGBUILD text eol=lf
+*.desktop text eol=lf
+*.png binary

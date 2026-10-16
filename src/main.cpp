@@ -1,5 +1,6 @@
 #include "app/Localization.h"
 #include "device/DeviceController.h"
+#include "platform/AppInit.h"
 #include "platform/Autostart.h"
 #include "playback/MediaController.h"
 #include "spotify/SpotifyClient.h"
@@ -11,6 +12,7 @@
 
 int main(int argc, char *argv[])
 {
+    AppInit::beforeQApplication();
     QApplication app(argc, argv);
     QApplication::setOrganizationName("EdgeWidget");
     QApplication::setApplicationName("EdgeWidget");

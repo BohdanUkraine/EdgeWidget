@@ -1,5 +1,6 @@
-// Renders the vinyl icon for the exe / installer (.ico) and the macOS bundle (.icns):
-//   make_icon <out.ico | out.icns>
+// Renders the vinyl icon for the exe / installer (.ico), the macOS bundle (.icns) and the
+// Linux desktop entry (.png, 256 px):
+//   make_icon <out.ico | out.icns | out.png>
 // Built on demand (EXCLUDE_FROM_ALL), run by scripts\make-icon.ps1; the results are committed.
 
 #include "ui/VinylIcon.h"
@@ -93,11 +94,13 @@ QByteArray icns()
 int main(int argc, char *argv[])
 {
     if (argc != 2) {
-        std::fprintf(stderr, "usage: make_icon <out.ico | out.icns>\n");
+        std::fprintf(stderr, "usage: make_icon <out.ico | out.icns | out.png>\n");
         return 2;
     }
     const QString path = QString::fromLocal8Bit(argv[1]);
-    const QByteArray data = path.endsWith(QLatin1String(".icns")) ? icns() : ico();
+    const QByteArray data = path.endsWith(QLatin1String(".icns")) ? icns()
+                          : path.endsWith(QLatin1String(".png"))  ? png(256)
+                                                                  : ico();
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size()) {
         std::fprintf(stderr, "cannot write %s\n", argv[1]);

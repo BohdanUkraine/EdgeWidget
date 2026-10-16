@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Edge Widget
+GenericName=Spotify mini player
+GenericName[uk]=Міні-плеєр Spotify
+Comment=Spotify mini player in a panel at the screen edge
+Comment[uk]=Міні-плеєр Spotify у панелі на краю екрана
+Exec=edgewidget
+Icon=edgewidget
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+Keywords=spotify;music;player;vinyl;
+StartupNotify=false

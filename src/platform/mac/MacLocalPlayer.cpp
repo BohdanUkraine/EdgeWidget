@@ -1,18 +1,15 @@
 #include "platform/LocalPlayer.h"
 
-#include <QEventLoop>
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
+#include "platform/CoverFetcher.h"
+
 #include <QProcess>
 #include <QStringList>
-#include <QTimer>
 
 #include <algorithm>
 #include <stdexcept>
 
 namespace {
 constexpr int kScriptTimeoutMs = 3000;
-constexpr int kCoverTimeoutMs = 5000;
 
 // By bundle id, so a missing Spotify is an error, not an "Where is Spotify?" dialog.
 const QString kTell = QStringLiteral("tell application id \"com.spotify.client\"");
@@ -82,7 +79,7 @@ public:
         st.sampledAtMs = MediaState::nowMs();
         st.shuffle = lines[6] == QLatin1String("true");
         st.repeat = lines[7] == QLatin1String("true") ? 2 : 0; // AppleScript knows only on / off
-        st.cover = cover(lines[8]);
+        st.cover = m_covers.get(lines[8]);
         return st;
     }
 
@@ -108,36 +105,7 @@ public:
     }
 
 private:
-    // The cover is an https URL: fetched here on the worker thread, once per URL.
-    QImage cover(const QString &url)
-    {
-        if (url == m_coverUrl && (!m_cover.isNull() || m_coverAttempts >= 3))
-            return m_cover;
-        if (url != m_coverUrl) {
-            m_coverUrl = url;
-            m_cover = {};
-            m_coverAttempts = 0;
-        }
-        if (url.isEmpty())
-            return {};
-        ++m_coverAttempts;
-        QNetworkReply *reply = m_nam.get(QNetworkRequest(QUrl(url)));
-        QEventLoop loop;
-        QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-        QTimer::singleShot(kCoverTimeoutMs, &loop, &QEventLoop::quit);
-        loop.exec();
-        if (reply->isFinished() && reply->error() == QNetworkReply::NoError)
-            m_cover = QImage::fromData(reply->readAll());
-        else
-            reply->abort();
-        reply->deleteLater();
-        return m_cover;
-    }
-
-    QNetworkAccessManager m_nam;
-    QString m_coverUrl;
-    QImage m_cover;
-    int m_coverAttempts = 0;
+    CoverFetcher m_covers; // the cover is an https URL
 };
 } // namespace
 

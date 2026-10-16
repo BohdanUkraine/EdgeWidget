@@ -130,6 +130,7 @@ Localization::Localization()
     // Deployed next to the exe; when run from the build tree, straight from Qt.
     for (const QString &dir : { QCoreApplication::applicationDirPath() + "/translations",              // Windows
                                 QCoreApplication::applicationDirPath() + "/../Resources/translations", // macOS
+                                QCoreApplication::applicationDirPath() + "/../share/edgewidget/translations", // Linux
                                 QLibraryInfo::path(QLibraryInfo::TranslationsPath) }) {
         if (m_qtUkrainian.load(QStringLiteral("qtbase_uk"), dir))
             break;

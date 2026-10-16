@@ -4,3 +4,5 @@ dist/
 dist-mac/
 out/
 *.user
+build-linux/
+dist-linux/

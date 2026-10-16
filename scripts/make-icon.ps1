@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Перемальовує resources\EdgeWidget.ico (exe та інсталер) і resources\EdgeWidget.icns (macOS) з того самого вінілу, що в треї.
+    Перемальовує resources\EdgeWidget.ico (exe та інсталер) resources\EdgeWidget.icns (macOS) і resources\edgewidget.png (Linux) з того самого вінілу, що в треї.
     Потрібно лише після зміни src\ui\VinylIcon.cpp; результат лежить у репозиторії.
 
 .EXAMPLE
@@ -15,6 +15,7 @@ $root = Split-Path $PSScriptRoot -Parent
 $build = Join-Path $root 'build'
 $ico = Join-Path $root 'resources\EdgeWidget.ico'
 $icns = Join-Path $root 'resources\EdgeWidget.icns'
+$png = Join-Path $root 'resources\edgewidget.png'
 
 $cmake = (Get-Command cmake -ErrorAction SilentlyContinue).Source
 if (-not $cmake) {
@@ -31,8 +32,8 @@ $ErrorActionPreference = 'Stop'
 
 # DLL-ки Qt беремо прямо з установки Qt.
 $env:PATH = "$QtDir\bin;$env:PATH"
-foreach ($out in $ico, $icns) {
+foreach ($out in $ico, $icns, $png) {
     & (Join-Path $build 'Release\make_icon.exe') $out
     if ($LASTEXITCODE -ne 0) { throw "make_icon завершився з кодом $LASTEXITCODE" }
 }
-Write-Host "`nГотово: $ico, $icns" -ForegroundColor Green
+Write-Host "`nГотово: $ico, $icns, $png" -ForegroundColor Green

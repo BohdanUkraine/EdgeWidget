@@ -1,0 +1,25 @@
+# Arch Linux package, built from the git repository against the system Qt.
+#   cd packaging/linux/arch && makepkg -si
+# For the AUR: publish this file, and point source= at a tagged release instead of the branch.
+pkgname=edgewidget
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Spotify mini player in a panel at the screen edge, with the MediaSpin record player"
+arch=('x86_64' 'aarch64')
+url="https://github.com/BohdanUkraine/EdgeWidget"
+license=('LicenseRef-proprietary')
+depends=('qt6-base' 'libsecret' 'hicolor-icon-theme')
+makedepends=('cmake' 'git')
+optdepends=('spotify: control the desktop app on this computer'
+            'xorg-xwayland: place the panel at the screen edge in Wayland sessions')
+source=("$pkgname::git+$url.git")
+sha256sums=('SKIP')
+
+build() {
+    cmake -S "$pkgname" -B build -DCMAKE_BUILD_TYPE=None -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+package() {
+    DESTDIR="$pkgdir" cmake --install build
+}

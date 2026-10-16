@@ -190,10 +190,10 @@ void SettingsPage::addPositionSection(QGridLayout *grid, int &row)
     grid->addLayout(layerRow, row++, 1, 1, 2);
     addHint(grid, row, tr("Поверх вікон: повноекранні програми й відео перекривають панель."));
 
-#ifdef Q_OS_MACOS
-    m_autostart = new QCheckBox(tr("Запускати при вході в систему"));
-#else
+#ifdef Q_OS_WIN
     m_autostart = new QCheckBox(tr("Запускати разом з Windows"));
+#else
+    m_autostart = new QCheckBox(tr("Запускати при вході в систему"));
 #endif
     m_autostart->setCursor(Qt::PointingHandCursor);
     m_autostart->setChecked(Autostart::isEnabled()); // the registry is the source of truth
