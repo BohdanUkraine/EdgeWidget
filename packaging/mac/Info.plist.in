@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Filled in by CMake (MACOSX_BUNDLE_* in CMakeLists.txt). -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>uk</string>
+    <key>CFBundleExecutable</key>
+    <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
+    <key>CFBundleIconFile</key>
+    <string>${MACOSX_BUNDLE_ICON_FILE}</string>
+    <key>CFBundleIdentifier</key>
+    <string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>${MACOSX_BUNDLE_BUNDLE_NAME}</string>
+    <key>CFBundleDisplayName</key>
+    <string>${MACOSX_BUNDLE_BUNDLE_NAME}</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
+    <key>CFBundleVersion</key>
+    <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <!-- A widget with a menu bar icon: no Dock icon, no app menu. -->
+    <key>LSUIElement</key>
+    <true/>
+    <!-- Asked the first time the widget controls Spotify (AppleScript). -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Edge Widget керує Spotify: пауза, перемикання треків, перемотка. / Edge Widget controls Spotify: pause, skip, seek.</string>
+    <!-- For the MediaSpin record player over Bluetooth. -->
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Edge Widget підключається до програвача MediaSpin. / Edge Widget connects to the MediaSpin record player.</string>
+</dict>
+</plist>

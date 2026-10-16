@@ -1,0 +1,2 @@
+// Exe icon (Explorer, shortcuts, the installed apps list). Regenerate with scripts\make-icon.ps1.
+IDI_ICON1 ICON "EdgeWidget.ico"

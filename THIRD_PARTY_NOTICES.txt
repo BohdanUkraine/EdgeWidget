@@ -1,0 +1,17 @@
+﻿EdgeWidget uses the Qt framework.
+
+Qt is Copyright (C) The Qt Company Ltd. and other contributors.
+Qt is used under the terms of the GNU Lesser General Public License v3
+(LGPLv3). Copies of the LGPLv3 and GPLv3 are in the "licenses" folder.
+
+Qt is linked dynamically: the Qt libraries are the Qt6*.dll files shipped
+next to EdgeWidget.exe (and in the "platforms", "styles" ... folders).
+You may replace them with your own compatible, modified build of Qt.
+
+Qt version used: 6.8.3
+Source code of that exact Qt version:
+  https://download.qt.io/archive/qt/
+  (or contact: <your e-mail> to obtain a copy on request for 3 years)
+
+Nothing in the EdgeWidget licence agreement restricts modifying the Qt
+libraries or reverse engineering EdgeWidget for debugging such modifications.

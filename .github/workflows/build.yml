@@ -1,0 +1,63 @@
+# Builds the Windows installer and the macOS .dmg; both land in the run's artifacts.
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    # VS 2022 image: scripts/build.ps1 uses the "Visual Studio 17 2022" generator.
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      # package.ps1 runs build.ps1 first, then cmake --install into out\stage and ISCC.
+      - name: Build and package
+        shell: pwsh
+        run: ./scripts/package.ps1 -QtDir "$env:QT_ROOT_DIR"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EdgeWidget-windows
+          path: out/EdgeWidget-Setup-*.exe
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: mac
+          target: desktop
+          arch: clang_64
+          cache: true
+
+      # No SIGN_IDENTITY: ad-hoc signature, no notarization.
+      - name: Build and package
+        env:
+          QT_DIR: ${{ env.QT_ROOT_DIR }}
+        run: bash scripts/build-mac.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EdgeWidget-macos
+          path: dist-mac/*.dmg
+          if-no-files-found: error
