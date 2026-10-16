@@ -35,6 +35,20 @@ function Find-CMake {
     throw 'CMake не знайдено. Запусти scripts\setup-dev.ps1.'
 }
 
+# Generator for the newest Visual Studio with C++ (2022 locally, 2026 on newer CI images).
+# Qt's msvc2022 build links fine with either: MSVC keeps binary compatibility.
+function Find-VsGenerator {
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (Test-Path $vswhere) {
+        $version = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion
+        switch -Wildcard ("$version") {
+            '18.*' { return 'Visual Studio 18 2026' }
+            '17.*' { return 'Visual Studio 17 2022' }
+        }
+    }
+    return 'Visual Studio 17 2022'
+}
+
 function Invoke-CMake {
     # Warnings on stderr (e.g. windeployqt's dxcompiler note) must not abort the script
     # half-way through copying the DLLs: only the exit code counts.
@@ -57,7 +71,7 @@ if ($Clean) {
 }
 
 Step 'Налаштування (CMake)'
-Invoke-CMake -S $root -B $build -G 'Visual Studio 17 2022' -A x64 "-DCMAKE_PREFIX_PATH=$QtDir"
+Invoke-CMake -S $root -B $build -G (Find-VsGenerator) -A x64 "-DCMAKE_PREFIX_PATH=$QtDir"
 
 Step "Збірка ($Config)"
 Invoke-CMake --build $build --config $Config

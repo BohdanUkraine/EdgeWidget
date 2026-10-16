@@ -8,7 +8,7 @@ on:
 
 jobs:
   windows:
-    # VS 2022 image: scripts/build.ps1 uses the "Visual Studio 17 2022" generator.
+    # build.ps1 picks the generator for whichever Visual Studio the image has (2022 or 2026).
     runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
