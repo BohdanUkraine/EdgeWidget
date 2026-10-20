@@ -61,7 +61,8 @@ src/
 | `ui/library` | `LibraryView`, `TrackListPopup` | список бібліотеки / картка з треками альбому |
 | `ui/library` | `LibraryStyle` | спільне малювання рядків, кеш обкладинок, скрол жестом |
 | `device` | `MediaSpinProtocol` | protobuf `MessageRequest` вручну (без libprotobuf), рамки з varint-довжиною |
-| `device` | `DeviceLink` | з'єднання з програвачем (зараз TCP до емулятора), перепідключення |
+| `device` | `DeviceLink` | з'єднання з програвачем: BLE, а коли запущено емулятор — TCP до нього; перепідключення |
+| `device` | `BleLink` | BLE до справжнього MediaSpin (Qt Bluetooth): пошук, підключення, підписка на TX, черга записів |
 | `device` | `DeviceController` | команди програвача → відтворення; трек / пауза / перемотка → програвач; колір платівки |
 | `playback` | `MediaController` | Spotify на цьому ПК (через `LocalPlayer`, інші плеєри ігноруються), запасний Web API, автозапуск, оптимістичний стан |
 | `spotify` | `SpotifyAuth` | вхід OAuth PKCE, токени (`SecretStore`) |
@@ -93,7 +94,9 @@ Client secret не зберігається; refresh token шифрується 
 ### Програвач MediaSpin
 
 Протокол — [`shared/PROTOCOL.md`](../shared/PROTOCOL.md), схема — `shared/proto/api/request.proto`.
-Поки BLE не підключено, віджет говорить з емулятором по TCP `127.0.0.1:47800`:
+Справжній програвач віджет шукає по BLE сам (пристрій `MediaSpin`; сполучати в налаштуваннях
+Bluetooth не треба, захисту поки немає — це для тестів). Якщо запущено емулятор, віджет говорить
+з ним по TCP `127.0.0.1:47800` — поки він працює, він має перевагу над BLE:
 
 ```
 pip install protobuf
@@ -120,7 +123,7 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-dev.ps1
 
 - **Visual Studio 2022 Build Tools** — компілятор MSVC, Windows SDK (з C++/WinRT), CMake;
 - **Python 3** — лише щоб поставити Qt;
-- **Qt 6.8.3** `msvc2022_64` у `C:\Qt` (тільки qtbase: усе під LGPL).
+- **Qt 6.8.3** `msvc2022_64` у `C:\Qt` (qtbase + qtconnectivity для Bluetooth: усе під LGPL).
 
 Ключі: `-WithGit`, `-WithVSCode` — ще й Git / VS Code; `-QtVersion 6.x.y`, `-QtRoot D:\Qt`.
 Інсталятор Visual Studio попросить права адміністратора.
@@ -168,7 +171,7 @@ powershell -ExecutionPolicy Bypass -File scripts\package.ps1
 > (писався на Windows). Перша збірка на маку майже напевно покаже дрібні помилки.
 
 Потрібні Xcode Command Line Tools (`xcode-select --install`), CMake і Qt 6.8 для macOS
-(онлайн-інсталер Qt, тільки qtbase; збірка universal — Apple silicon + Intel).
+(онлайн-інсталер Qt: qtbase + Qt Connectivity; збірка universal — Apple silicon + Intel).
 
 ```bash
 bash scripts/build-mac.sh
@@ -237,7 +240,7 @@ linuxdeploy скрипт завантажує сам.
 
 ## Як продавати без комерційної ліцензії Qt (LGPLv3)
 
-Qt Core / Gui / Widgets доступні під **LGPLv3**, тож закриту програму можна
+Qt Core / Gui / Widgets / Network / Bluetooth доступні під **LGPLv3**, тож закриту програму можна
 продавати, якщо виконати умови:
 
 1. **Тільки динамічна лінковка.** Qt — окремі `Qt6*.dll` поряд з exe (як робить

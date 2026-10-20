@@ -1,5 +1,7 @@
 #include "device/DeviceLink.h"
 
+#include "device/BleLink.h"
+
 #include <QDebug>
 
 namespace {
@@ -9,24 +11,33 @@ constexpr int kRetryMs = 2000;
 
 DeviceLink::DeviceLink(QObject *parent)
     : QObject(parent)
+    , m_ble(new BleLink(this))
 {
+    connect(m_ble, &BleLink::connectedChanged, this, &DeviceLink::update);
+    connect(m_ble, &BleLink::messageReceived, this, [this](const MediaSpin::Message &message) {
+        if (m_via == Via::Ble)
+            emit messageReceived(message);
+    });
+
     connect(&m_socket, &QTcpSocket::connected, this, [this] {
         m_retry.stop();
-        emit connectedChanged(true);
+        qDebug() << "[device] emulator connected";
+        update();
     });
     connect(&m_socket, &QTcpSocket::disconnected, this, [this] {
         m_reader = {};
-        emit connectedChanged(false);
+        update();
         m_retry.start();
     });
     connect(&m_socket, &QTcpSocket::errorOccurred, this, [this] {
-        if (!isConnected())
+        if (!emulatorUp())
             m_retry.start();
     });
     connect(&m_socket, &QTcpSocket::readyRead, this, [this] {
         for (const MediaSpin::Message &message : m_reader.feed(m_socket.readAll())) {
             qDebug().noquote() << "[device] <-" << MediaSpin::describe(message);
-            emit messageReceived(message);
+            if (m_via == Via::Emulator)
+                emit messageReceived(message);
         }
     });
 
@@ -34,6 +45,24 @@ DeviceLink::DeviceLink(QObject *parent)
     m_retry.setSingleShot(true);
     connect(&m_retry, &QTimer::timeout, this, &DeviceLink::tryConnect);
     tryConnect();
+}
+
+bool DeviceLink::isConnected() const
+{
+    return m_via != Via::None;
+}
+
+void DeviceLink::update()
+{
+    const Via via = emulatorUp() ? Via::Emulator : m_ble->isConnected() ? Via::Ble : Via::None;
+    if (via == m_via)
+        return;
+    const bool wasConnected = isConnected();
+    m_via = via;
+    if (wasConnected)
+        emit connectedChanged(false); // another player: the controller forgets what it told the old one
+    if (isConnected())
+        emit connectedChanged(true);
 }
 
 void DeviceLink::tryConnect()
@@ -44,8 +73,15 @@ void DeviceLink::tryConnect()
 
 void DeviceLink::send(const MediaSpin::Message &message)
 {
-    if (!isConnected())
-        return;
-    qDebug().noquote() << "[device] ->" << MediaSpin::describe(message);
-    m_socket.write(MediaSpin::frame(message));
+    switch (m_via) {
+    case Via::Emulator:
+        qDebug().noquote() << "[device] ->" << MediaSpin::describe(message);
+        m_socket.write(MediaSpin::frame(message));
+        break;
+    case Via::Ble:
+        m_ble->send(message);
+        break;
+    case Via::None:
+        break;
+    }
 }

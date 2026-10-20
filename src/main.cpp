@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     MediaController media;
     SpotifyClient spotify;
     media.setRemote(&spotify); // Web API fallback when nothing plays on this PC
-    DeviceController device(&media, &spotify); // MediaSpin record player (emulator for now)
+    DeviceController device(&media, &spotify); // MediaSpin record player (BLE, or the emulator)
     EdgePanel panel(&media, &spotify, &device);
     panel.show();
 
@@ -34,5 +34,7 @@ int main(int argc, char *argv[])
     QObject::connect(&spotify, &SpotifyClient::error, &tray, &TrayIcon::notify);
     QObject::connect(&SpotifyLauncher::instance(), &SpotifyLauncher::failed, &tray, &TrayIcon::notify);
 
+    qInfo("[app] started");
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [] { qInfo("[app] quitting"); });
     return app.exec();
 }

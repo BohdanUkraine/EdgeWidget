@@ -25,7 +25,10 @@ TrayIcon::TrayIcon(EdgePanel *panel, QObject *parent)
 void TrayIcon::fillMenu()
 {
     m_menu.clear();
-    m_menu.addAction(tr("Вийти"), qApp, &QApplication::quit);
+    m_menu.addAction(tr("Вийти"), qApp, [] {
+        qInfo("[app] quit from the tray menu"); // tells a deliberate exit apart in the logs
+        QApplication::quit();
+    });
 }
 
 void TrayIcon::styleMenu()

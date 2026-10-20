@@ -20,6 +20,7 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2022_64
+          modules: 'qtconnectivity'
           cache: true
 
       - name: Install Inno Setup
@@ -48,6 +49,7 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
+          modules: 'qtconnectivity'
           cache: true
 
       # No SIGN_IDENTITY: ad-hoc signature, no notarization.
@@ -86,6 +88,7 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
+          modules: 'qtconnectivity'
           cache: true
 
       - name: Build and package

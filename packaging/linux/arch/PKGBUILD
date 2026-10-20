@@ -8,9 +8,10 @@ pkgdesc="Spotify mini player in a panel at the screen edge, with the MediaSpin r
 arch=('x86_64' 'aarch64')
 url="https://github.com/BohdanUkraine/EdgeWidget"
 license=('LicenseRef-proprietary')
-depends=('qt6-base' 'libsecret' 'hicolor-icon-theme')
+depends=('qt6-base' 'qt6-connectivity' 'libsecret' 'hicolor-icon-theme')
 makedepends=('cmake' 'git')
 optdepends=('spotify: control the desktop app on this computer'
+            'bluez: the MediaSpin record player over Bluetooth'
             'xorg-xwayland: place the panel at the screen edge in Wayland sessions')
 source=("$pkgname::git+$url.git")
 sha256sums=('SKIP')

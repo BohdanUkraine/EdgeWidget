@@ -85,13 +85,14 @@ if (Test-Python) {
 }
 
 Step "Qt $QtVersion ($QtArch) у $QtRoot"
-if (Test-Path (Join-Path $QtDir 'bin\Qt6Core.dll')) {
+if (Test-Path (Join-Path $QtDir 'bin\Qt6Bluetooth.dll')) {
     Ok "вже є: $QtDir"
 } else {
     & python -m pip install --user --quiet aqtinstall
     if ($LASTEXITCODE -ne 0) { throw 'Не вдалося встановити aqtinstall.' }
-    # Лише qtbase (Core, Gui, Widgets, Network): усе під LGPL, додаткові модулі не потрібні.
-    & python -m aqt install-qt windows desktop $QtVersion $QtArch -O $QtRoot
+    # qtbase (Core, Gui, Widgets, Network) + qtconnectivity (Bluetooth для MediaSpin): усе під LGPL.
+    # Уже встановлений Qt без Bluetooth ця ж команда просто доповнить.
+    & python -m aqt install-qt windows desktop $QtVersion $QtArch -m qtconnectivity -O $QtRoot
     if ($LASTEXITCODE -ne 0) { throw 'aqtinstall не зміг встановити Qt.' }
     Ok "встановлено: $QtDir"
 }

@@ -18,9 +18,10 @@ if(WIN32)
     set(CMAKE_INSTALL_BINDIR "." CACHE STRING "" FORCE)
 endif()
 
-# Only Qt Core/Gui/Widgets/Network (+ DBus on Linux): all of them are available under LGPLv3.
+# Only Qt Core/Gui/Widgets/Network/Bluetooth (+ DBus on Linux): all of them are available under LGPLv3.
 # Do NOT add Qt NetworkAuth (GPL-only in the open-source edition); OAuth is hand-written.
-set(qt_components Widgets Network)
+# Bluetooth (module qtconnectivity): the MediaSpin record player over BLE.
+set(qt_components Widgets Network Bluetooth)
 if(UNIX AND NOT APPLE)
     list(APPEND qt_components DBus) # MPRIS: Spotify on Linux
 endif()
@@ -63,6 +64,7 @@ qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/playback/MediaController.cpp src/playback/MediaController.h
     # device: the MediaSpin record player
     src/device/MediaSpinProtocol.cpp src/device/MediaSpinProtocol.h
+    src/device/BleLink.cpp src/device/BleLink.h
     src/device/DeviceLink.cpp src/device/DeviceLink.h
     src/device/DeviceController.cpp src/device/DeviceController.h
     # spotify: Web API, login, launching the app
@@ -141,7 +143,7 @@ else()
     endif()
 endif()
 
-target_link_libraries(EdgeWidget PRIVATE Qt6::Widgets Qt6::Network)
+target_link_libraries(EdgeWidget PRIVATE Qt6::Widgets Qt6::Network Qt6::Bluetooth)
 target_include_directories(EdgeWidget PRIVATE src)
 # Same folder tree in Visual Studio / Qt Creator / Xcode.
 get_target_property(edgewidget_sources EdgeWidget SOURCES)
