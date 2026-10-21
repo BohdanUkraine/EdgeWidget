@@ -25,6 +25,8 @@ enum class Command : quint32 {
     SwitchTo = 11,
     Unbind = 12,
     TrackLen = 13,
+    Error = 14, // ESP -> PC: a request failed, data = text for the user
+    Ack = 15,   // ESP -> PC: the command with this seq was received and done
 };
 
 // What is written on a physical record.
@@ -39,6 +41,7 @@ struct Message
     Command command = Command::Unknown;
     QString data;
     std::optional<Record> record;
+    quint32 seq = 0; // PC -> ESP command number for the ACK (0: none); set by BleLink
 };
 
 QByteArray encode(const Message &message);

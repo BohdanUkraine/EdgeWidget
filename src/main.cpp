@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
     tray.show();
     QObject::connect(&spotify, &SpotifyClient::error, &tray, &TrayIcon::notify);
     QObject::connect(&SpotifyLauncher::instance(), &SpotifyLauncher::failed, &tray, &TrayIcon::notify);
+    QObject::connect(&device, &DeviceController::deviceError, &tray, &TrayIcon::notify);
 
     qInfo("[app] started");
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [] { qInfo("[app] quitting"); });

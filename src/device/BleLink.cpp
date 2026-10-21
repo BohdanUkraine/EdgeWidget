@@ -18,6 +18,8 @@ const QBluetoothUuid kTx(QStringLiteral("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"))
 constexpr int kScanMs = 5000;
 constexpr int kRetryMs = 2000;       // after a lost connection / an empty scan
 constexpr int kNoAdapterMs = 10000;  // Bluetooth off or missing: check now and then, quietly
+constexpr int kAckMs = 600;          // no ACK this long: send the command again
+constexpr int kMaxTries = 4;
 } // namespace
 
 BleLink::BleLink(QObject *parent)
@@ -42,6 +44,9 @@ BleLink::BleLink(QObject *parent)
 
     m_retry.setSingleShot(true);
     connect(&m_retry, &QTimer::timeout, this, &BleLink::scan);
+    m_ackTimer.setSingleShot(true);
+    m_ackTimer.setInterval(kAckMs);
+    connect(&m_ackTimer, &QTimer::timeout, this, &BleLink::onAckTimeout);
     scan();
 }
 
@@ -61,8 +66,6 @@ void BleLink::scan()
 
 void BleLink::onDeviceFound(const QBluetoothDeviceInfo &info)
 {
-    qDebug().noquote() << "[device] BLE seen:" << info.address().toString() << "name" << info.name()
-                       << "uuids" << info.serviceUuids().size() << "config" << int(info.coreConfigurations());
     if (m_controller || !(info.coreConfigurations() & QBluetoothDeviceInfo::LowEnergyCoreConfiguration))
         return;
     if (info.name() != kDeviceName && !info.serviceUuids().contains(kService))
@@ -94,30 +97,37 @@ void BleLink::connectTo(const QBluetoothDeviceInfo &info)
                 [this](const QLowEnergyCharacteristic &c, const QByteArray &value) {
                     if (c.uuid() != kTx)
                         return;
-                    if (auto message = MediaSpin::decode(value)) {
-                        qDebug().noquote() << "[device] <-" << MediaSpin::describe(*message);
-                        emit messageReceived(*message);
+                    auto message = MediaSpin::decode(value);
+                    if (!message) {
+                        qDebug() << "[device] BLE: undecodable message" << value.toHex(' ');
+                        return;
                     }
+                    if (message->command == MediaSpin::Command::Ack) {
+                        if (m_inFlight && !m_queue.isEmpty() && message->seq == m_queue.first().seq) {
+                            m_ackTimer.stop();
+                            m_queue.removeFirst();
+                            m_inFlight = false;
+                            m_tries = 0;
+                            sendHead();
+                        }
+                        return; // transport only: nothing for the controller
+                    }
+                    qDebug().noquote() << "[device] <-" << MediaSpin::describe(*message);
+                    emit messageReceived(*message);
                 });
         connect(m_service, &QLowEnergyService::descriptorWritten, this, [this](const QLowEnergyDescriptor &d, const QByteArray &) {
             if (m_ready || d.uuid() != QBluetoothUuid(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration))
                 return;
             m_ready = true;
+            m_nextSeq = 1; // the device starts a new session on connect too
             qDebug() << "[device] BLE: connected, MTU" << m_controller->mtu();
             emit connectedChanged(true);
         });
-        connect(m_service, &QLowEnergyService::characteristicWritten, this, [this] {
-            m_writing = false;
-            writeNext();
-        });
         connect(m_service, &QLowEnergyService::errorOccurred, this, [this](QLowEnergyService::ServiceError error) {
             qDebug() << "[device] BLE service error:" << error;
-            if (error == QLowEnergyService::CharacteristicWriteError) { // lose this one, keep going
-                m_writing = false;
-                writeNext();
-            } else if (!m_ready) {
+            // a failed write is retried by the ACK timer like a lost ACK
+            if (error != QLowEnergyService::CharacteristicWriteError && !m_ready)
                 drop(kRetryMs);
-            }
         });
         m_service->discoverDetails();
     });
@@ -145,23 +155,49 @@ void BleLink::send(const MediaSpin::Message &message)
     if (!m_ready)
         return;
     qDebug().noquote() << "[device] ->" << MediaSpin::describe(message);
-    m_queue.append(MediaSpin::encode(message)); // BLE keeps message boundaries: no length prefix
-    writeNext();
+    MediaSpin::Message numbered = message;
+    numbered.seq = m_nextSeq++;
+    if (!m_nextSeq)
+        m_nextSeq = 1; // 0 means "no number"
+    m_queue.append(numbered);
+    sendHead();
 }
 
-void BleLink::writeNext()
+void BleLink::sendHead()
 {
-    if (m_writing || m_queue.isEmpty() || !m_service)
+    if (m_inFlight || m_queue.isEmpty() || !m_service)
         return;
-    m_writing = true;
-    m_service->writeCharacteristic(m_rx, m_queue.takeFirst(), QLowEnergyService::WriteWithResponse);
+    m_inFlight = true;
+    m_tries++;
+    // BLE keeps message boundaries: no length prefix
+    m_service->writeCharacteristic(m_rx, MediaSpin::encode(m_queue.first()), QLowEnergyService::WriteWithResponse);
+    m_ackTimer.start();
+}
+
+void BleLink::onAckTimeout()
+{
+    if (m_queue.isEmpty())
+        return;
+    const MediaSpin::Message &head = m_queue.first();
+    m_inFlight = false;
+    if (m_tries < kMaxTries) {
+        qDebug().noquote() << "[device] BLE: no ACK for" << MediaSpin::describe(head) << "seq" << head.seq
+                           << "- sending again";
+    } else {
+        qDebug().noquote() << "[device] BLE: gave up on" << MediaSpin::describe(head) << "seq" << head.seq;
+        m_queue.removeFirst();
+        m_tries = 0;
+    }
+    sendHead();
 }
 
 void BleLink::drop(int retryMs)
 {
     const bool wasReady = std::exchange(m_ready, false);
     m_queue.clear();
-    m_writing = false;
+    m_inFlight = false;
+    m_tries = 0;
+    m_ackTimer.stop();
     m_rx = {};
     m_tx = {};
     if (m_service)

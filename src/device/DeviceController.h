@@ -6,6 +6,7 @@
 #include <QColor>
 #include <QElapsedTimer>
 #include <QObject>
+#include <QTimer>
 
 #include <optional>
 
@@ -33,11 +34,13 @@ public:
 signals:
     void connectedChanged(bool connected);
     void recordColorChanged(const QColor &color);
+    void deviceError(const QString &message); // the player says a request failed (text for the user)
 
 private:
     void onMessage(const MediaSpin::Message &message);
     void onState(const MediaState &state);
     void setRecord(bool present, const QColor &color);
+    void applyPendingColor();
     void syncDevice(); // full state after (re)connecting
     void send(MediaSpin::Command command, const QString &data = {});
     void sendPlaying(bool playing);
@@ -53,6 +56,11 @@ private:
     std::optional<bool> m_sentShuffle; // lamps on the device
     std::optional<int> m_sentRepeat;
     QColor m_recordColor;
+    // A record that starts music: its colour waits for the new cover, so both change at once.
+    std::optional<QColor> m_pendingColor;
+    QString m_pendingFromTrack; // the track playing when the record was put on
+    qint64 m_pendingFromMs = 0; // and its position
+    QTimer m_pendingTimeout;
 
     MediaState m_last;              // previous state, to detect changes and seeks
     QElapsedTimer m_sinceFromDevice; // don't send the device's own command back to it

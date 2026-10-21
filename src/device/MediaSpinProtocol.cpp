@@ -91,6 +91,10 @@ QByteArray encode(const Message &m)
         }
         writeBytes(out, 3, record);
     }
+    if (m.seq) {
+        writeTag(out, 4, Varint);
+        writeVarint(out, m.seq);
+    }
     return out;
 }
 
@@ -111,7 +115,8 @@ std::optional<Message> decode(const QByteArray &bytes)
                     record.color = quint32(v);
             });
             m.record = record;
-        }
+        } else if (field == 4)
+            m.seq = quint32(value);
     });
     if (!ok)
         return std::nullopt;
@@ -121,7 +126,7 @@ std::optional<Message> decode(const QByteArray &bytes)
 QString describe(const Message &m)
 {
     static const char *names[] = { "UNKNOWN", "PAUSE", "RESUME", "GO_BACK", "GO_FORTH", "LOOP_ALBUM", "LOOP_SONG",
-                                   "REMIX", "BIND", "MOVE_TO", "SET_VOLUME", "SWITCH_TO", "UNBIND", "TRACK_LEN" };
+                                   "REMIX", "BIND", "MOVE_TO", "SET_VOLUME", "SWITCH_TO", "UNBIND", "TRACK_LEN", "ERROR", "ACK" };
     const quint32 cmd = quint32(m.command);
     QString text = cmd < std::size(names) ? names[cmd] : QStringLiteral("CMD(%1)").arg(cmd);
     if (!m.data.isEmpty())

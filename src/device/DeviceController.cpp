@@ -14,6 +14,7 @@ namespace {
 constexpr qint64 kEchoMs = 2000;       // the player state lags this long behind a device command
 constexpr qint64 kSeekJumpMs = 2500;   // position jump that counts as a seek
 constexpr qint64 kAnnounceMs = 1000;   // the device says what lies on the reader right after connecting
+constexpr int kCoverWaitMs = 3000;     // longest a record's colour waits for its cover
 } // namespace
 
 DeviceController::DeviceController(MediaController *media, SpotifyClient *spotify, QObject *parent)
@@ -23,6 +24,9 @@ DeviceController::DeviceController(MediaController *media, SpotifyClient *spotif
     , m_link(new DeviceLink(this))
 {
     connect(m_link, &DeviceLink::messageReceived, this, &DeviceController::onMessage);
+    m_pendingTimeout.setSingleShot(true);
+    m_pendingTimeout.setInterval(kCoverWaitMs);
+    connect(&m_pendingTimeout, &QTimer::timeout, this, &DeviceController::applyPendingColor);
     connect(m_link, &DeviceLink::connectedChanged, this, [this](bool connected) {
         m_sinceConnected.start();
         m_sentTrack.clear();
@@ -31,8 +35,11 @@ DeviceController::DeviceController(MediaController *media, SpotifyClient *spotif
         m_sentRepeat.reset();
         if (connected)
             syncDevice();
-        else
+        else {
+            m_pendingColor.reset();
+            m_pendingTimeout.stop();
             setRecord(false, {});
+        }
         emit connectedChanged(connected);
     });
     connect(m_media, &MediaController::stateChanged, this, &DeviceController::onState);
@@ -62,6 +69,13 @@ void DeviceController::setRecord(bool present, const QColor &color)
         m_recordColor = color;
         emit recordColorChanged(color);
     }
+}
+
+void DeviceController::applyPendingColor()
+{
+    m_pendingTimeout.stop();
+    if (const auto color = std::exchange(m_pendingColor, std::nullopt))
+        setRecord(true, *color);
 }
 
 void DeviceController::send(Command command, const QString &data)
@@ -100,12 +114,21 @@ void DeviceController::onMessage(const MediaSpin::Message &message)
     case Command::SwitchTo: {
         const QString uri = message.record ? message.record->uri : message.data;
         const QColor color = message.record && message.record->color ? QColor(QRgb(message.record->color)) : QColor();
-        setRecord(true, color); // an empty record still changes the colour
         const QString context = SpotifyClient::contextUri(uri);
         // Right after connecting it only says what already lies there: just the colour, keep the music.
         const bool announce = m_sinceConnected.elapsed() < kAnnounceMs;
-        if (!context.isEmpty() && !announce)
+        if (!context.isEmpty() && !announce) {
+            m_hasRecord = true;
+            m_pendingColor = color; // shown with the record's first cover, see onState()
+            m_pendingFromTrack = state.trackKey();
+            m_pendingFromMs = state.positionNow();
+            m_pendingTimeout.start();
             m_spotify->play(context);
+        } else {
+            m_pendingColor.reset(); // a record put on before this one no longer counts
+            m_pendingTimeout.stop();
+            setRecord(true, color); // an empty record still changes the colour
+        }
         break;
     }
     case Command::Pause: m_sentPlaying = false; m_media->setPlaying(false); break; // the device knows already
@@ -128,6 +151,7 @@ void DeviceController::onMessage(const MediaSpin::Message &message)
         break;
     case Command::MoveTo: m_media->seek(qint64(message.data.toDouble() * 1000)); break;
     case Command::SetVolume: m_media->setVolume(std::clamp(message.data.toInt(), 0, 100)); break;
+    case Command::Error: emit deviceError(message.data); break; // the device words it for the user
     default:
         break;
     }
@@ -138,6 +162,13 @@ void DeviceController::onMessage(const MediaSpin::Message &message)
 void DeviceController::onState(const MediaState &state)
 {
     const MediaState last = std::exchange(m_last, state);
+    // The record's music is up: a new track with its cover, or the same track started over
+    // (the record's playlist was already playing). Repainted in the same frame as the cover.
+    const bool newTrack = state.trackKey() != m_pendingFromTrack && !state.cover.isNull();
+    const bool restarted = state.trackKey() == m_pendingFromTrack && m_pendingFromMs > kSeekJumpMs
+                           && state.positionNow() < kSeekJumpMs;
+    if (m_pendingColor && (newTrack || restarted))
+        applyPendingColor();
     if (!m_link->isConnected() || !state.available)
         return;
 
