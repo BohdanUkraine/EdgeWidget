@@ -35,6 +35,7 @@ LibraryView::LibraryView(SpotifyClient *spotify, CoverCache *covers, QWidget *pa
     });
 
     connect(m_spotify, &SpotifyClient::libraryChanged, this, [this] {
+        m_hover = {}; // the hovered row may have moved
         m_scroll.clamp(maxScroll());
         if (m_detail >= 0) {
             // Rows may have moved; follow the opened item or close it.

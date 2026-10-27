@@ -28,6 +28,13 @@ public:
     void setArea(const QRect &column, int panelTop, int panelBottom);
     void setNowPlaying(const QString &title, bool playing);
 
+    // Context of the item currently open (empty if closed): lets a caller tell whether this is
+    // already showing the playlist a device fader is scrubbing through.
+    QString openUri() const { return m_open ? m_item.uri : QString(); }
+    // The fader is scrubbing: eases this track's box to the centre of the list when there is
+    // room to, or to wherever it lands near the start / end when there isn't (see animateBoxTo()).
+    void previewIndex(int index);
+
 signals:
     void togglePlayRequested(); // header cover clicked while this item is playing
     void closeRequested();      // header name clicked
@@ -57,6 +64,8 @@ private:
     Hover hitTest(const QPoint &pos) const;
     void applyGeometry();
     void paintTracks(QPainter &p, const QRect &list);
+    void syncPreviewFromNowTitle(); // best-effort: find m_nowTitle in m_tracks
+    void animateBoxTo(qreal target); // eases m_boxY there (snaps the first time, nothing to ease from)
 
     SpotifyClient *m_spotify;
     CoverCache *m_covers;
@@ -79,7 +88,23 @@ private:
     QString m_nowTitle;
     bool m_playing = false;
 
+    // Which track is boxed as "current": the device fader (or a direct click here) pins this
+    // instantly, independent of Spotify's API confirming it — that confirmation can lag well
+    // behind, or never arrive at all while paused (see DeviceController's pending-playlist-pick).
+    // Unpinned, it just follows m_nowTitle as usual.
+    int m_previewIndex = -1;
+    bool m_previewPinned = false;
+    // The box's own position, eased independently of m_scroll.offset: dead centre when there is
+    // room to scroll the pick there (tracks flow under a box that never moves), or the row's own
+    // position when there isn't (start / end of the playlist) — either way it always *glides*
+    // there instead of snapping, even across several picks in a row while the fader is dragged.
+    qreal m_boxY = 0;
+    bool m_boxPositioned = false; // false: nothing to ease from yet, the next move snaps instead
+    QVariantAnimation m_boxAnim;
+
     LibraryStyle::ScrollGesture m_scroll;
     bool m_pressInList = false; // only presses in the track list may drag-scroll
     Hover m_hover;
+
+    QVariantAnimation m_scrollAnim; // previewIndex(): smoothly eases m_scroll.offset to a target
 };

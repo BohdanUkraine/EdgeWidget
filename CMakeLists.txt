@@ -50,6 +50,7 @@ qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/ui/EdgePanel.cpp src/ui/EdgePanel.h
     src/ui/PanelContent.cpp src/ui/PanelContent.h
     src/ui/PanelLayout.h
+    src/ui/PlaylistScrubPopup.cpp src/ui/PlaylistScrubPopup.h
     src/ui/ScaledWidget.h
     src/ui/PlayerView.cpp src/ui/PlayerView.h
     src/ui/TabStrip.cpp src/ui/TabStrip.h
@@ -95,6 +96,10 @@ if(WIN32)
     )
     # windowsapp: C++/WinRT media session API, crypt32: DPAPI for the Spotify token (both part of Windows).
     target_link_libraries(EdgeWidget PRIVATE windowsapp crypt32)
+    # winrt/base.h still probes <experimental/coroutine> in C++17 mode; newer MSVC STLs (e.g. the
+    # one shipped with VS 2026) turned its deprecation notice into a hard error. No coroutines are
+    # actually used here, so silencing it (as the compiler's own message suggests) is enough.
+    target_compile_definitions(EdgeWidget PRIVATE _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
 elseif(APPLE)
     target_sources(EdgeWidget PRIVATE
         src/platform/CoverFetcher.cpp src/platform/CoverFetcher.h

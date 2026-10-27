@@ -6,6 +6,8 @@
 
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QHash>
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -27,6 +29,13 @@ QString libraryCachePath()
 {
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/library.json";
 }
+
+QString recentPath()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/recent.json";
+}
+
+constexpr int kMaxRecent = 200;
 
 // Images come largest first; take the smallest one that is still >= 160 px.
 QString pickImage(const QJsonArray &images)
@@ -94,8 +103,10 @@ void SpotifyClient::logout() { m_auth->logout(); }
 void SpotifyClient::onLoggedOut(bool wasConnected)
 {
     m_library.clear();
+    m_recent.clear();
     m_activeUri.clear();
     QFile::remove(libraryCachePath());
+    QFile::remove(recentPath());
     emit libraryChanged();
     if (wasConnected)
         emit connectedChanged(false);
@@ -105,6 +116,12 @@ void SpotifyClient::onLoggedOut(bool wasConnected)
 
 void SpotifyClient::loadLibraryCache()
 {
+    QFile recent(recentPath());
+    if (recent.open(QIODevice::ReadOnly)) {
+        for (const QJsonValue &v : QJsonDocument::fromJson(recent.readAll()).array())
+            m_recent.append(v.toString());
+    }
+
     QFile f(libraryCachePath());
     if (!f.open(QIODevice::ReadOnly))
         return;
@@ -126,6 +143,39 @@ void SpotifyClient::saveLibraryCache() const
     QFile f(libraryCachePath());
     if (f.open(QIODevice::WriteOnly))
         f.write(QJsonDocument(arr).toJson(QJsonDocument::Compact));
+}
+
+void SpotifyClient::bumpRecent(const QString &uri)
+{
+    if (uri.isEmpty() || (!m_recent.isEmpty() && m_recent.first() == uri))
+        return;
+    m_recent.removeAll(uri);
+    m_recent.prepend(uri);
+    while (m_recent.size() > kMaxRecent)
+        m_recent.removeLast();
+
+    QDir().mkpath(QFileInfo(recentPath()).absolutePath());
+    QFile f(recentPath());
+    if (f.open(QIODevice::WriteOnly))
+        f.write(QJsonDocument(QJsonArray::fromStringList(m_recent)).toJson(QJsonDocument::Compact));
+
+    const auto it = std::find_if(m_library.begin(), m_library.end(),
+                                 [&uri](const LibraryItem &i) { return i.uri == uri; });
+    if (it == m_library.end() || it == m_library.begin())
+        return;
+    m_library.move(int(it - m_library.begin()), 0);
+    saveLibraryCache();
+    emit libraryChanged();
+}
+
+void SpotifyClient::applyRecentOrder()
+{
+    QHash<QString, int> rank;
+    for (int i = 0; i < m_recent.size(); ++i)
+        rank.insert(m_recent.at(i), i);
+    std::stable_sort(m_library.begin(), m_library.end(), [&rank](const LibraryItem &a, const LibraryItem &b) {
+        return rank.value(a.uri, kMaxRecent) < rank.value(b.uri, kMaxRecent);
+    });
 }
 
 // ---------------------------------------------------------------- requests
@@ -186,7 +236,7 @@ void SpotifyClient::refreshLibrary()
     m_loading = true;
     emit libraryChanged();
 
-    // Spotify sidebar order without "Recents": Liked Songs, playlists, albums, artists.
+    // Spotify sidebar order: Liked Songs, playlists, albums, artists — then recently played first.
     request("GET", "/me", {}, [this](int status, const QByteArray &body) {
         if (status == 200) {
             const QJsonObject me = QJsonDocument::fromJson(body).object();
@@ -204,6 +254,7 @@ void SpotifyClient::refreshLibrary()
                                   all.append({ LibraryItem::Liked, "spotify:user:" + m_userId + ":collection",
                                                tr("Улюблені треки"), {}, {} });
                               m_library = all + playlists + albums + artists;
+                              applyRecentOrder();
                               m_loading = false;
                               saveLibraryCache();
                               emit libraryChanged();
@@ -260,7 +311,9 @@ void SpotifyClient::fetchPage(const QString &path, LibraryItem::Kind kind, QList
 
 void SpotifyClient::fetchTracks(const LibraryItem &item, std::function<void(const QList<Track> &, bool)> done)
 {
-    const QString id = item.uri.section(':', 2, 2);
+    // The ID is always the last segment — "spotify:KIND:ID", but also the older
+    // "spotify:user:USERID:KIND:ID" that some endpoints (play history among them) still use.
+    const QString id = item.uri.section(':', -1);
     QString path;
     switch (item.kind) {
     case LibraryItem::Liked: path = "/me/tracks?limit=50"; break;
@@ -319,6 +372,7 @@ void SpotifyClient::setActiveUri(const QString &uri)
         return;
     m_activeUri = uri;
     emit activeChanged();
+    bumpRecent(uri);
 }
 
 void SpotifyClient::updateNowPlaying()
@@ -326,8 +380,28 @@ void SpotifyClient::updateNowPlaying()
     if (!isConnected())
         return;
     request("GET", "/me/player", {}, [this](int status, const QByteArray &body) {
-        if (status == 200)
+        if (status == 200) {
             setActiveUri(QJsonDocument::fromJson(body).object()["context"].toObject()["uri"].toString());
+            return;
+        }
+        // 204: Spotify has no Connect "device" session to report at all — common with playback
+        // paused from before (nothing has (re)engaged the session since), and it can stay this
+        // way indefinitely, not just right after startup. Polling for it to appear on its own
+        // made the app visibly sit there for several seconds and often still came up empty —
+        // ask Spotify's play history instead, which needs no live session at all.
+        if (status == 204)
+            fetchLastPlayedContext();
+    });
+}
+
+void SpotifyClient::fetchLastPlayedContext()
+{
+    request("GET", "/me/player/recently-played?limit=1", {}, [this](int status, const QByteArray &body) {
+        if (status != 200)
+            return;
+        const QJsonArray items = QJsonDocument::fromJson(body).object()["items"].toArray();
+        if (!items.isEmpty())
+            setActiveUri(items.first().toObject()["context"].toObject()["uri"].toString());
     });
 }
 
@@ -346,8 +420,10 @@ void SpotifyClient::play(const QString &contextUri)
         return;
     }
     setActiveUri(contextUri); // highlight right away, the request takes a moment
-    // Spotify picks the track (it resumes the context), but always from the start of it.
-    startPlayback(json({ { "context_uri", contextUri }, { "position_ms", 0 } }));
+    // Without "offset", Spotify resumes wherever it last left off in this context (just
+    // restarted from 0 ms); an explicit offset to the first track makes it start from the top.
+    startPlayback(json({ { "context_uri", contextUri }, { "offset", QJsonObject{ { "position", 0 } } },
+                          { "position_ms", 0 } }));
 }
 
 void SpotifyClient::playTrack(const LibraryItem &context, const QList<Track> &tracks, int index)

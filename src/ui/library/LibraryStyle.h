@@ -38,8 +38,10 @@ struct RowState
 
 void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryItem &item, const QImage &cover,
               const RowState &state);
+// drawBorder: suppress the per-row "current" border when the caller draws its own instead (a
+// fixed box the row scrolls under, see TrackListPopup) — current still colours the title/art.
 void paintTrack(QPainter &p, const QFont &base, const QRect &row, const QImage &cover, const Track &track,
-                bool hovered, bool current, bool playing);
+                bool hovered, bool current, bool playing, bool drawBorder = true);
 void paintScrollbar(QPainter &p, const QRectF &track, int contentH, int scroll, int maxScroll);
 // Fades the top / bottom of a scrolled list into the background (only where there is more).
 void paintEdgeFades(QPainter &p, const QRectF &area, int scroll, int maxScroll);

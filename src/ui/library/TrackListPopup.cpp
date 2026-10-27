@@ -17,6 +17,11 @@ constexpr int kPad = 8;
 constexpr int kRadius = 14;
 constexpr int kBorder = 2;
 constexpr int kAnimMs = 260;
+// Faster than kAnimMs, and shared by the scroll offset and the box position (see m_scrollAnim /
+// m_boxAnim): previewIndex() can be re-triggered every ~120 ms while the device fader is
+// scrubbing, and a 260 ms ease barely gets going before the next call restarts it — this settles
+// quickly enough to actually keep up and read as responsive instead of laggy.
+constexpr int kPreviewAnimMs = 110;
 } // namespace
 
 TrackListPopup::TrackListPopup(SpotifyClient *spotify, CoverCache *covers, QWidget *owner)
@@ -38,6 +43,20 @@ TrackListPopup::TrackListPopup(SpotifyClient *spotify, CoverCache *covers, QWidg
     connect(&m_anim, &QVariantAnimation::finished, this, [this] {
         if (!m_open)
             hide();
+    });
+
+    m_scrollAnim.setDuration(kPreviewAnimMs);
+    m_scrollAnim.setEasingCurve(QEasingCurve::OutCubic);
+    connect(&m_scrollAnim, &QVariantAnimation::valueChanged, this, [this](const QVariant &v) {
+        m_scroll.offset = v.toInt();
+        update();
+    });
+
+    m_boxAnim.setDuration(kPreviewAnimMs);
+    m_boxAnim.setEasingCurve(QEasingCurve::OutCubic);
+    connect(&m_boxAnim, &QVariantAnimation::valueChanged, this, [this](const QVariant &v) {
+        m_boxY = v.toReal();
+        update();
     });
 
     connect(m_covers, &CoverCache::coverReady, this, qOverload<>(&QWidget::update));
@@ -128,6 +147,10 @@ void TrackListPopup::open(const LibraryItem &item, int rowTop)
     m_state = TracksState::Loading;
     m_scroll = {};
     m_hover = {};
+    m_previewIndex = -1;
+    m_previewPinned = false;
+    m_boxAnim.stop();
+    m_boxPositioned = false;
 
     const int id = ++m_requestId;
     m_spotify->fetchTracks(item, [this, id](const QList<Track> &tracks, bool ok) {
@@ -135,6 +158,7 @@ void TrackListPopup::open(const LibraryItem &item, int rowTop)
             return;
         m_tracks = tracks;
         m_state = ok ? TracksState::Ready : TracksState::Failed;
+        syncPreviewFromNowTitle();
         update();
     });
 
@@ -181,7 +205,78 @@ void TrackListPopup::setNowPlaying(const QString &title, bool playing)
         return;
     m_nowTitle = title;
     m_playing = playing;
+    // The API caught up with a pinned pick (or there was never one): safe to follow it again.
+    if (m_previewPinned && m_previewIndex >= 0 && m_previewIndex < m_tracks.size()
+        && m_tracks.at(m_previewIndex).name == title)
+        m_previewPinned = false;
+    if (!m_previewPinned)
+        syncPreviewFromNowTitle();
     update();
+}
+
+void TrackListPopup::syncPreviewFromNowTitle()
+{
+    m_previewIndex = -1;
+    if (!m_nowTitle.isEmpty()) {
+        for (int i = 0; i < m_tracks.size(); ++i) {
+            if (m_tracks.at(i).name == m_nowTitle) {
+                m_previewIndex = i;
+                break;
+            }
+        }
+    }
+    // Passive sync (the real track changed by some other means): just box wherever that row
+    // already sits — unlike previewIndex() below, this never scrolls the list on its own.
+    if (m_previewIndex < 0)
+        m_boxPositioned = false;
+    else
+        animateBoxTo(m_previewIndex * kTrackH - m_scroll.offset);
+}
+
+void TrackListPopup::animateBoxTo(qreal target)
+{
+    if (!m_boxPositioned) {
+        m_boxPositioned = true;
+        m_boxAnim.stop();
+        m_boxY = target;
+        update();
+        return;
+    }
+    if (std::abs(m_boxY - target) < 0.5)
+        return;
+    m_boxAnim.stop();
+    m_boxAnim.setStartValue(m_boxY);
+    m_boxAnim.setEndValue(target);
+    m_boxAnim.start();
+}
+
+// Called every ~120 ms while the device fader scrubs: pins the box to this track right away,
+// independent of whatever Spotify's API confirms (or never confirms, while paused) — see
+// DeviceController::playlistScrub().
+void TrackListPopup::previewIndex(int index)
+{
+    if (!m_open || index < 0 || index >= int(m_tracks.size()))
+        return;
+    m_previewPinned = true;
+    if (m_previewIndex != index) {
+        m_previewIndex = index;
+        update();
+    }
+    const int raw = index * kTrackH - (tracksRect().height() - kTrackH) / 2;
+    const int target = std::clamp(raw, 0, maxScroll());
+    // Enough tracks above and below to actually reach the centre: the box can stay put there
+    // and let the list scroll under it. Too close to either end of the playlist, and it just
+    // settles wherever that row lands instead (same as scrolling any list to its start / end) —
+    // either way animateBoxTo() eases it there, so picking through several tracks in a row
+    // (even ones that can't be centred) glides instead of jumping row to row.
+    const bool centered = (target == raw);
+    if (target != m_scroll.offset) {
+        m_scrollAnim.stop();
+        m_scrollAnim.setStartValue(m_scroll.offset);
+        m_scrollAnim.setEndValue(target);
+        m_scrollAnim.start();
+    }
+    animateBoxTo(centered ? (tracksRect().height() - kTrackH) / 2.0 : qreal(index * kTrackH - target));
 }
 
 // ---------------------------------------------------------------- painting
@@ -271,14 +366,24 @@ void TrackListPopup::paintTracks(QPainter &p, const QRect &list)
         p.drawText(QRect(list.left(), list.top(), list.width(), 80), Qt::AlignCenter, text);
     } else {
         const bool active = m_item.uri == m_spotify->activeUri();
+        const bool showBox = active && m_previewIndex >= 0 && m_boxPositioned;
         const int first = m_scroll.offset / kTrackH;
         const int last = std::min(int(m_tracks.size()) - 1, (m_scroll.offset + list.height()) / kTrackH);
         for (int i = first; i <= last; ++i) {
             const Track &t = m_tracks.at(i);
             const QRect row(list.left(), list.top() + i * kTrackH - m_scroll.offset, list.width(), kTrackH);
-            const bool current = active && !m_nowTitle.isEmpty() && t.name == m_nowTitle;
+            const bool current = active && i == m_previewIndex;
             const QImage cover = m_covers->get(t.imageUrl.isEmpty() ? m_item.imageUrl : t.imageUrl);
-            paintTrack(p, font(), row, cover, t, m_hover.track == i && !m_scroll.dragged, current, m_playing);
+            paintTrack(p, font(), row, cover, t, m_hover.track == i && !m_scroll.dragged, current, m_playing,
+                       /*drawBorder=*/!showBox);
+        }
+        // A single overlay eased independently of any one row (see animateBoxTo()): it glides
+        // between positions smoothly, instead of a per-row border snapping row to row.
+        if (showBox) {
+            const QRect box(list.left(), list.top() + int(std::lround(m_boxY)), list.width(), kTrackH);
+            p.setPen(QPen(th().accent, 2));
+            p.setBrush(Qt::NoBrush);
+            p.drawRoundedRect(QRectF(box).adjusted(1, 1, -7, -1), 6, 6);
         }
     }
     p.restore();
@@ -344,6 +449,12 @@ void TrackListPopup::mouseReleaseEvent(QMouseEvent *event)
     const Hover hit = hitTest(logical(event->position()));
     if (hit.track >= 0) {
         m_spotify->playTrack(m_item, m_tracks, hit.track);
+        m_previewPinned = true;
+        if (m_previewIndex != hit.track) {
+            m_previewIndex = hit.track;
+            update();
+        }
+        animateBoxTo(hit.track * kTrackH - m_scroll.offset); // already visible: just box it, don't scroll
         return;
     }
     switch (hit.part) {

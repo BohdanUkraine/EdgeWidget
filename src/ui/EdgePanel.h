@@ -46,6 +46,7 @@ private:
     void animateTo(bool expanded);
     void applyGeometry();
     QRect availableArea() const;
+    int handleWidth() const;       // blended with m_reveal when the handle is hidden, see .cpp
     QRect handleRect() const;
     QSize panelSize() const;       // expanded content size in px
     int handleHeight() const;      // collapsed height in px

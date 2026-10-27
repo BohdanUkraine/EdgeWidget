@@ -27,6 +27,9 @@ enum class Command : quint32 {
     TrackLen = 13,
     Error = 14, // ESP -> PC: a request failed, data = text for the user
     Ack = 15,   // ESP -> PC: the command with this seq was received and done
+    SetMode = 16, // PC -> ESP: fader mode, data "0" timeline / "1" playlist; on connect and on change
+    FaderTouch = 17, // ESP -> PC: hand on the fader "1" / released "0" (after the final MOVE_TO)
+    RequestSync = 18, // ESP -> PC: just connected, resend full state (SetMode/TrackLen/MoveTo/Pause)
 };
 
 // What is written on a physical record.

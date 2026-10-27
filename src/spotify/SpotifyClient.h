@@ -84,15 +84,20 @@ private:
     void fetchTrackPage(const QString &path, QList<Track> collected, std::function<void(QList<Track>, int status)> done);
     void startPlayback(const QByteArray &body);
     void playOnAnyDevice(const QByteArray &body, int attempt = 0);
+    void fetchLastPlayedContext(); // updateNowPlaying() fallback: no live Connect session to ask
     void setActiveUri(const QString &uri);
     void onLoggedOut(bool wasConnected);
     void loadLibraryCache();
     void saveLibraryCache() const;
+    // Recently played contexts go first, like Spotify's "Recents" sort.
+    void bumpRecent(const QString &uri);
+    void applyRecentOrder();
 
     QNetworkAccessManager m_nam;
     SpotifyAuth *m_auth;
 
     QList<LibraryItem> m_library;
+    QStringList m_recent; // context URIs, most recently played first
     bool m_loading = false;
     QString m_activeUri;
     QElapsedTimer m_volumeRefused; // one "can't change the volume" message per drag, not per step

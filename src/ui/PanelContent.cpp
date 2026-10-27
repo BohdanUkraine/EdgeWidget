@@ -6,6 +6,7 @@
 #include "playback/MediaController.h"
 #include "ui/PanelLayout.h"
 #include "ui/PlayerView.h"
+#include "ui/PlaylistScrubPopup.h"
 #include "ui/SettingsPage.h"
 #include "ui/TabStrip.h"
 #include "ui/library/TrackListPopup.h"
@@ -27,9 +28,10 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     : QWidget(parent)
     , m_spotify(spotify)
     , m_covers(new CoverCache(spotify, this))
-    , m_player(new PlayerView(media, this))
+    , m_player(new PlayerView(media, m_covers, this))
     , m_library(new LibraryView(spotify, m_covers, this))
     , m_tracks(new TrackListPopup(spotify, m_covers, parent ? parent->window() : nullptr))
+    , m_scrubPopup(new PlaylistScrubPopup(m_covers, parent ? parent->window() : nullptr))
     , m_tabs(new TabStrip(this))
     , m_settingsHost(new QWidget(this))
     , m_settings(new SettingsPage(spotify, device, m_settingsHost))
@@ -58,6 +60,24 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
 
     m_player->setRecordColor(device->recordColor());
     connect(device, &DeviceController::recordColorChanged, m_player, &PlayerView::setRecordColor);
+
+    // Playlist fader mode, while the device fader is being dragged: live preview, not a commitment
+    // yet. If the playlist it's scrubbing is already open in the track list, scroll that instead
+    // of covering it with a second popup.
+    connect(device, &DeviceController::playlistScrubMoved, this, [this](const QList<Track> &tracks, int index) {
+        if (!m_tracks->openUri().isEmpty() && m_tracks->openUri() == m_spotify->activeUri())
+            m_tracks->previewIndex(index);
+        else
+            m_scrubPopup->showPreview(tracks, index);
+        // Show it as the current track right away everywhere — title, cover, duration — not
+        // only in these two track-list previews; DeviceController decides when (or whether,
+        // while paused) it actually switches.
+        if (index >= 0 && index < tracks.size()) {
+            const Track &t = tracks.at(index);
+            m_player->setPreview(t.name, t.artists, t.imageUrl, t.durationMs);
+        }
+    });
+    connect(device, &DeviceController::playlistScrubEnded, this, [this] { m_scrubPopup->hidePreview(); });
 
     // Library list <-> track list card.
     connect(m_library, &LibraryView::togglePlayRequested, media, &MediaController::togglePlayPause);
@@ -120,6 +140,8 @@ void PanelContent::updatePopupAnchor()
 {
     const QRect column(m_library->mapToGlobal(QPoint(0, 0)), m_library->size());
     m_tracks->setArea(column, mapToGlobal(QPoint(0, 0)).y(), mapToGlobal(QPoint(0, height())).y());
+    m_scrubPopup->setAnchor(QRect(window()->mapToGlobal(QPoint(0, 0)), window()->size()),
+                            AppSettings::instance().rightSide(), isVisible());
 }
 
 void PanelContent::closeTrackList(bool fadeHeader)

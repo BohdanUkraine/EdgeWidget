@@ -26,9 +26,10 @@ constexpr int kCoverPx = 128;       // cached cover size for the label (HiDPI-fr
 constexpr qreal kDegPerSec = 200.0; // 33 1/3 rpm
 } // namespace
 
-PlayerView::PlayerView(MediaController *media, QWidget *parent)
+PlayerView::PlayerView(MediaController *media, CoverCache *covers, QWidget *parent)
     : ScaledWidget(parent)
     , m_media(media)
+    , m_covers(covers)
 {
     setAttribute(Qt::WA_TranslucentBackground);
     setMouseTracking(true);
@@ -38,6 +39,7 @@ PlayerView::PlayerView(MediaController *media, QWidget *parent)
     connect(m_media, &MediaController::stateChanged, this, &PlayerView::onState);
     connect(&SpotifyLauncher::instance(), &SpotifyLauncher::launchingChanged, this, qOverload<>(&QWidget::update));
     connect(&AppSettings::instance(), &AppSettings::changed, this, qOverload<>(&QWidget::update));
+    connect(m_covers, &CoverCache::coverReady, this, qOverload<>(&QWidget::update));
     m_sinceFrame.start();
     onState(m_media->state());
 }
@@ -50,6 +52,8 @@ void PlayerView::onState(const MediaState &state)
             : state.cover.scaled(kCoverPx, kCoverPx, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
     }
     m_state = state;
+    if (m_previewPinned && state.trackKey() != m_previewBaseTrackKey)
+        m_previewPinned = false; // the real track moved on, one way or another: show it now
     updateSpin();
     update();
 }
@@ -57,6 +61,18 @@ void PlayerView::onState(const MediaState &state)
 void PlayerView::setRecordColor(const QColor &color)
 {
     m_recordColor = color;
+    update();
+}
+
+void PlayerView::setPreview(const QString &title, const QString &artist, const QString &imageUrl, qint64 durationMs)
+{
+    if (!m_previewPinned)
+        m_previewBaseTrackKey = m_state.trackKey();
+    m_previewPinned = true;
+    m_previewTitle = title;
+    m_previewArtist = artist;
+    m_previewImageUrl = imageUrl;
+    m_previewDurationMs = durationMs;
     update();
 }
 
@@ -96,6 +112,8 @@ void PlayerView::hideEvent(QHideEvent *event)
 
 qint64 PlayerView::displayedPosition() const
 {
+    if (m_previewPinned)
+        return 0; // not actually cued yet (see DeviceController's pending playlist pick)
     return m_seeking ? m_seekPreview : m_state.positionNow();
 }
 
@@ -237,15 +255,19 @@ void PlayerView::paintVinyl(QPainter &p)
     p.rotate(m_angle);
     QPainterPath label;
     label.addEllipse(QPointF(), kLabelR, kLabelR);
-    if (!m_cover.isNull() && m_state.available) {
+    const QImage previewCover = m_previewPinned ? m_covers->get(m_previewImageUrl) : QImage();
+    const bool showPreviewCover = m_previewPinned && !previewCover.isNull();
+    if (showPreviewCover || (!m_previewPinned && !m_cover.isNull() && m_state.available)) {
+        const QImage &cover = showPreviewCover ? previewCover : m_cover;
         p.save();
         p.setClipPath(label);
         // Windows thumbnails from Spotify have a frame and a logo strip: use their centre.
-        // Web API covers (music on another device) are clean.
-        const QRectF src = m_state.remote ? QRectF(m_cover.rect())
-                                          : QRectF(m_cover.rect()).adjusted(kCoverPx * 0.18, kCoverPx * 0.12,
-                                                                            -kCoverPx * 0.18, -kCoverPx * 0.24);
-        p.drawImage(QRectF(-kLabelR, -kLabelR, 2 * kLabelR, 2 * kLabelR), m_cover, src);
+        // Web API covers (music on another device) and the playlist's own track covers
+        // (the preview, fetched straight from Spotify's library data) are both clean.
+        const QRectF src = (m_state.remote || showPreviewCover) ? QRectF(cover.rect())
+                           : QRectF(cover.rect()).adjusted(kCoverPx * 0.18, kCoverPx * 0.12, -kCoverPx * 0.18,
+                                                            -kCoverPx * 0.24);
+        p.drawImage(QRectF(-kLabelR, -kLabelR, 2 * kLabelR, 2 * kLabelR), cover, src);
         p.restore();
     } else {
         p.setPen(Qt::NoPen);
@@ -287,9 +309,11 @@ void PlayerView::paintNowPlaying(QPainter &p)
 
     const bool launching = SpotifyLauncher::instance().isLaunching();
     const QString name = launching ? tr("Запускаю Spotify…")
+        : m_previewPinned ? m_previewTitle
         : m_state.available && !m_state.title.isEmpty() ? m_state.title : tr("Нічого не грає");
-    QString artist = m_state.available && !launching ? m_state.artist : QString();
-    if (m_state.remote && !m_state.deviceName.isEmpty() && !launching)
+    QString artist = m_previewPinned && !launching ? m_previewArtist
+        : m_state.available && !launching ? m_state.artist : QString();
+    if (m_state.remote && !m_state.deviceName.isEmpty() && !launching && !m_previewPinned)
         artist += QStringLiteral("  ·  ") + m_state.deviceName; // playing on another device
 
     const QFontMetrics tm(title);
@@ -395,9 +419,10 @@ void PlayerView::paintProgress(QPainter &p)
     const QRect r = progressRect();
     const qreal y = r.center().y() + 0.5;
     const qint64 pos = displayedPosition();
-    const qreal ratio = m_state.durationMs > 0 ? qreal(pos) / m_state.durationMs : 0.0;
+    const qint64 durationMs = m_previewPinned ? m_previewDurationMs : m_state.durationMs;
+    const qreal ratio = durationMs > 0 ? qreal(pos) / durationMs : 0.0;
     const bool active = m_hover == Progress || m_seeking;
-    const bool known = m_state.available && m_state.durationMs > 0;
+    const bool known = m_previewPinned ? durationMs > 0 : m_state.available && durationMs > 0;
 
     QFont f = font();
     f.setPixelSize(10);
@@ -406,7 +431,7 @@ void PlayerView::paintProgress(QPainter &p)
     p.drawText(QRect(kRightX, r.y(), kTimeW, r.height()), Qt::AlignRight | Qt::AlignVCenter,
                known ? LibraryStyle::formatTime(pos) : QStringLiteral("-:--"));
     p.drawText(QRect(r.right() + 7, r.y(), kTimeW, r.height()), Qt::AlignLeft | Qt::AlignVCenter,
-               known ? LibraryStyle::formatTime(m_state.durationMs) : QStringLiteral("-:--"));
+               known ? LibraryStyle::formatTime(durationMs) : QStringLiteral("-:--"));
 
     p.setPen(Qt::NoPen);
     p.setBrush(th.track);

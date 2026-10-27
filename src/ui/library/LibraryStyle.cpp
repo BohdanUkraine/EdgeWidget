@@ -132,6 +132,13 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
     const QRectF art = artRect(row);
     paintArt(p, base, art, item, cover);
 
+    // The playing playlist / album stands out with a thin ring around its cover.
+    if (state.active) {
+        p.setPen(QPen(th().accent, 1.5));
+        p.setBrush(Qt::NoBrush);
+        p.drawPath(artPath(art.adjusted(-2, -2, 2, 2), item));
+    }
+
     // The playing item always shows "pause"; others show "play" when the cover is hovered.
     const bool artHovered = state.hovered && state.hoverPart == RowPart::Art;
     const bool playingHere = state.active && state.playing;
@@ -183,7 +190,7 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
 }
 
 void paintTrack(QPainter &p, const QFont &base, const QRect &row, const QImage &cover, const Track &track,
-                bool hovered, bool current, bool playing)
+                bool hovered, bool current, bool playing, bool drawBorder)
 {
     if (hovered) {
         p.setPen(Qt::NoPen);
@@ -237,6 +244,13 @@ void paintTrack(QPainter &p, const QFont &base, const QRect &row, const QImage &
                QFontMetrics(sub).elidedText(track.artists, Qt::ElideRight, textW));
     p.drawText(QRect(row.right() - 10 - durW, row.y(), durW, kTrackH), Qt::AlignRight | Qt::AlignVCenter,
                formatTime(track.durationMs));
+
+    // The playing / pointed-at song stands out with a border around the whole row.
+    if (current && drawBorder) {
+        p.setPen(QPen(th().accent, 2));
+        p.setBrush(Qt::NoBrush);
+        p.drawRoundedRect(QRectF(row).adjusted(1, 1, -7, -1), 6, 6);
+    }
 }
 
 void paintScrollbar(QPainter &p, const QRectF &track, int contentH, int scroll, int maxScroll)

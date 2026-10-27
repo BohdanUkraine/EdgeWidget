@@ -8,6 +8,7 @@ class DeviceController;
 class LibraryView;
 class MediaController;
 class PlayerView;
+class PlaylistScrubPopup;
 class SettingsPage;
 class SpotifyClient;
 class TabStrip;
@@ -38,6 +39,7 @@ private:
     PlayerView *m_player;
     LibraryView *m_library;
     TrackListPopup *m_tracks; // own window, owned by the panel
+    PlaylistScrubPopup *m_scrubPopup; // own window too: the device-fader live preview
     TabStrip *m_tabs;
     QWidget *m_settingsHost;  // clips the sliding page so it never covers the tabs
     SettingsPage *m_settings;

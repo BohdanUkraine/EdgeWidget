@@ -160,6 +160,17 @@ void SettingsPage::addSizeSection(QGridLayout *grid, int &row)
     m_handleWidth = addSlider(grid, row, tr("Кнопка: ширина"), 12, 48, 1, " px", [&s](int v) { s.setHandleWidth(v); });
     m_handleHeight = addSlider(grid, row, tr("Кнопка: висота"), 40, 400, 5, " px", [&s](int v) { s.setHandleHeight(v); });
     m_cardHeight = addSlider(grid, row, tr("Список треків"), 100, 480, 10, " px", [&s](int v) { s.setCardHeight(v); });
+    m_scrubPopupHeight = addSlider(grid, row, tr("Прев'ю плейлиста"), 36, 72, 2, " px",
+                                   [&s](int v) { s.setScrubPopupHeight(v); });
+
+    m_handleVisible = new QCheckBox(tr("Показувати кнопку на екрані"));
+    m_handleVisible->setCursor(Qt::PointingHandCursor);
+    connect(m_handleVisible, &QCheckBox::toggled, this, [this](bool on) {
+        if (!m_syncing)
+            AppSettings::instance().setHandleVisible(on);
+    });
+    grid->addWidget(m_handleVisible, row++, 0, 1, 3);
+    addHint(grid, row, tr("Вимкнено: панель не висить на краю екрана. Відкрити її можна з трея."));
 }
 
 void SettingsPage::addPositionSection(QGridLayout *grid, int &row)
@@ -281,6 +292,16 @@ void SettingsPage::addPlayerSection(QGridLayout *grid, int &row)
     m_playerStatus = label({}, "hint");
     m_playerStatus->setWordWrap(true);
     grid->addWidget(m_playerStatus, row++, 0, 1, 3);
+
+    const auto faderModes = addChoice(grid, row, tr("Фейдер"), { tr("Таймлайн"), tr("Плейлист") });
+    m_faderTimeline = faderModes[0];
+    m_faderPlaylist = faderModes[1];
+    connect(m_faderPlaylist, &QPushButton::toggled, this, [this](bool on) {
+        if (!m_syncing)
+            AppSettings::instance().setFaderMode(on ? AppSettings::FaderMode::Playlist
+                                                     : AppSettings::FaderMode::Timeline);
+    });
+    addHint(grid, row, tr("Плейлист: фейдер вибирає трек у плейлисті замість позиції в треку."));
 }
 
 void SettingsPage::addAboutSection(QGridLayout *grid, int &row)
@@ -363,7 +384,9 @@ void SettingsPage::syncFromSettings()
     m_scale->setValue(int(std::lround(s.scale() * 100)));
     m_handleWidth->setValue(s.handleWidth());
     m_handleHeight->setValue(s.handleHeight());
+    m_handleVisible->setChecked(s.handleVisible());
     m_cardHeight->setValue(s.cardHeight());
+    m_scrubPopupHeight->setValue(s.scrubPopupHeight());
     m_position->setValue(int(std::lround(s.position() * 100)));
     (s.rightSide() ? m_right : m_left)->setChecked(true);
     (s.darkTheme() ? m_dark : m_light)->setChecked(true);
@@ -376,6 +399,7 @@ void SettingsPage::syncFromSettings()
     m_customColor->setChecked(!preset);
     m_language->setCurrentIndex(std::max(0, m_language->findData(s.language())));
     m_layer->setCurrentIndex(int(s.layer()));
+    (s.faderMode() == AppSettings::FaderMode::Playlist ? m_faderPlaylist : m_faderTimeline)->setChecked(true);
     m_syncing = false;
     applyStyle();
 }

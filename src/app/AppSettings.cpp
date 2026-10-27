@@ -9,6 +9,7 @@ constexpr qreal kDefaultScale = 1.0;
 constexpr int kDefaultHandleWidth = 24;
 constexpr int kDefaultHandleHeight = 200;
 constexpr int kDefaultCardHeight = 200;
+constexpr int kDefaultScrubPopupHeight = 52;
 constexpr qreal kDefaultPosition = 1.0; // bottom
 const QColor kDefaultAccent(30, 215, 96);
 } // namespace
@@ -26,7 +27,9 @@ AppSettings::AppSettings()
     m_scale = std::clamp(s.value("scale", kDefaultScale).toDouble(), 0.7, 1.6);
     m_handleWidth = std::clamp(s.value("handleWidth", kDefaultHandleWidth).toInt(), 12, 48);
     m_handleHeight = std::clamp(s.value("handleHeight", kDefaultHandleHeight).toInt(), 40, 400);
+    m_handleVisible = s.value("handleVisible", true).toBool();
     m_cardHeight = std::clamp(s.value("cardHeight", kDefaultCardHeight).toInt(), 100, 480);
+    m_scrubPopupHeight = std::clamp(s.value("scrubPopupHeight", kDefaultScrubPopupHeight).toInt(), 36, 72);
     m_rightSide = s.value("rightSide", true).toBool();
     m_position = std::clamp(s.value("position", kDefaultPosition).toDouble(), 0.0, 1.0);
     m_darkTheme = s.value("darkTheme", true).toBool();
@@ -35,6 +38,7 @@ AppSettings::AppSettings()
         m_accent = kDefaultAccent;
     m_language = s.value("language", "auto").toString();
     m_layer = Layer(std::clamp(s.value("layer", int(Layer::AboveWindows)).toInt(), 0, 2));
+    m_faderMode = FaderMode(std::clamp(s.value("faderMode", int(FaderMode::Timeline)).toInt(), 0, 1));
 }
 
 void AppSettings::save() const
@@ -44,13 +48,16 @@ void AppSettings::save() const
     s.setValue("scale", m_scale);
     s.setValue("handleWidth", m_handleWidth);
     s.setValue("handleHeight", m_handleHeight);
+    s.setValue("handleVisible", m_handleVisible);
     s.setValue("cardHeight", m_cardHeight);
+    s.setValue("scrubPopupHeight", m_scrubPopupHeight);
     s.setValue("rightSide", m_rightSide);
     s.setValue("position", m_position);
     s.setValue("darkTheme", m_darkTheme);
     s.setValue("accent", m_accent.name());
     s.setValue("language", m_language);
     s.setValue("layer", int(m_layer));
+    s.setValue("faderMode", int(m_faderMode));
 }
 
 #define SETTER(name, member, type)        \
@@ -66,13 +73,16 @@ void AppSettings::save() const
 SETTER(setScale, m_scale, qreal)
 SETTER(setHandleWidth, m_handleWidth, int)
 SETTER(setHandleHeight, m_handleHeight, int)
+SETTER(setHandleVisible, m_handleVisible, bool)
 SETTER(setCardHeight, m_cardHeight, int)
+SETTER(setScrubPopupHeight, m_scrubPopupHeight, int)
 SETTER(setRightSide, m_rightSide, bool)
 SETTER(setPosition, m_position, qreal)
 SETTER(setDarkTheme, m_darkTheme, bool)
 SETTER(setAccent, m_accent, const QColor &)
 SETTER(setLanguage, m_language, const QString &)
 SETTER(setLayer, m_layer, Layer)
+SETTER(setFaderMode, m_faderMode, FaderMode)
 
 #undef SETTER
 
@@ -81,13 +91,16 @@ void AppSettings::resetToDefaults()
     m_scale = kDefaultScale;
     m_handleWidth = kDefaultHandleWidth;
     m_handleHeight = kDefaultHandleHeight;
+    m_handleVisible = true;
     m_cardHeight = kDefaultCardHeight;
+    m_scrubPopupHeight = kDefaultScrubPopupHeight;
     m_rightSide = true;
     m_position = kDefaultPosition;
     m_darkTheme = true;
     m_accent = kDefaultAccent;
     m_language = QStringLiteral("auto");
     m_layer = Layer::AboveWindows;
+    m_faderMode = FaderMode::Timeline;
     save();
     emit changed();
 }

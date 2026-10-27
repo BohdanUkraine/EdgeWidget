@@ -60,9 +60,11 @@ private:
     QSlider *m_handleWidth = nullptr;
     QSlider *m_handleHeight = nullptr;
     QSlider *m_cardHeight = nullptr;
+    QSlider *m_scrubPopupHeight = nullptr;
     QSlider *m_position = nullptr;
     QPushButton *m_left = nullptr;
     QPushButton *m_right = nullptr;
+    QCheckBox *m_handleVisible = nullptr;
     QPushButton *m_dark = nullptr;
     QPushButton *m_light = nullptr;
     QList<QPushButton *> m_swatches;
@@ -76,6 +78,8 @@ private:
     QPushButton *m_reload = nullptr;
     QPushButton *m_logout = nullptr;
     QLabel *m_playerStatus = nullptr;
+    QPushButton *m_faderTimeline = nullptr;
+    QPushButton *m_faderPlaylist = nullptr;
 
     bool m_syncing = false; // true while controls are set from AppSettings (no write-back)
     QString m_styleKey;     // theme + accent the stylesheet was built for

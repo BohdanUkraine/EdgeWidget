@@ -12,30 +12,38 @@ class AppSettings : public QObject
 public:
     // Where the panel sits among other windows.
     enum class Layer { BelowWindows, AboveWindows, AboveAll }; // AboveWindows: full-screen apps cover it
+    // What the device's fader controls: time within the track, or which track in the playlist.
+    enum class FaderMode { Timeline, Playlist };
 
     static AppSettings &instance();
 
     qreal scale() const { return m_scale; }              // main panel size, 1.0 = 100 %
     int handleWidth() const { return m_handleWidth; }    // the tab that stays on screen, px
     int handleHeight() const { return m_handleHeight; }  // px
+    bool handleVisible() const { return m_handleVisible; } // false: not on screen at all while collapsed
     int cardHeight() const { return m_cardHeight; }      // track list card, logical px
+    int scrubPopupHeight() const { return m_scrubPopupHeight; } // playlist-scrub preview: box height, logical px
     bool rightSide() const { return m_rightSide; }
     qreal position() const { return m_position; }        // 0 = top of the screen, 1 = bottom
     bool darkTheme() const { return m_darkTheme; }
     QColor accent() const { return m_accent; }
     QString language() const { return m_language; }      // "auto", "uk", "en"
     Layer layer() const { return m_layer; }
+    FaderMode faderMode() const { return m_faderMode; }
 
     void setScale(qreal value);
     void setHandleWidth(int value);
     void setHandleHeight(int value);
+    void setHandleVisible(bool value);
     void setCardHeight(int value);
+    void setScrubPopupHeight(int value);
     void setRightSide(bool value);
     void setPosition(qreal value);
     void setDarkTheme(bool value);
     void setAccent(const QColor &value);
     void setLanguage(const QString &value);
     void setLayer(Layer value);
+    void setFaderMode(FaderMode value);
     void resetToDefaults();
 
 signals:
@@ -48,13 +56,16 @@ private:
     qreal m_scale;
     int m_handleWidth;
     int m_handleHeight;
+    bool m_handleVisible;
     int m_cardHeight;
+    int m_scrubPopupHeight;
     bool m_rightSide;
     qreal m_position;
     bool m_darkTheme;
     QColor m_accent;
     QString m_language;
     Layer m_layer;
+    FaderMode m_faderMode;
 };
 
 inline qreal uiScale()

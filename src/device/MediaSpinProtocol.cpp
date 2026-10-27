@@ -126,7 +126,8 @@ std::optional<Message> decode(const QByteArray &bytes)
 QString describe(const Message &m)
 {
     static const char *names[] = { "UNKNOWN", "PAUSE", "RESUME", "GO_BACK", "GO_FORTH", "LOOP_ALBUM", "LOOP_SONG",
-                                   "REMIX", "BIND", "MOVE_TO", "SET_VOLUME", "SWITCH_TO", "UNBIND", "TRACK_LEN", "ERROR", "ACK" };
+                                   "REMIX", "BIND", "MOVE_TO", "SET_VOLUME", "SWITCH_TO", "UNBIND", "TRACK_LEN",
+                                   "ERROR", "ACK", "SET_MODE", "FADER_TOUCH", "REQUEST_SYNC" };
     const quint32 cmd = quint32(m.command);
     QString text = cmd < std::size(names) ? names[cmd] : QStringLiteral("CMD(%1)").arg(cmd);
     if (!m.data.isEmpty())

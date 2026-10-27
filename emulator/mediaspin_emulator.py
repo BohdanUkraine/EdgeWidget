@@ -231,6 +231,7 @@ class Emulator:
         self.fader_label = ttk.Label(fad, text="0:00 / 0:00", width=12)
         self.fader_label.pack(side="left")
         self.fader.bind("<ButtonPress-1>", lambda e: setattr(self, "dragging", True))
+        self.fader.bind("<B1-Motion>", self._fader_dragged)
         self.fader.bind("<ButtonRelease-1>", self._fader_released)
 
         raw = ttk.LabelFrame(self.root, text="Ручна відправка")
@@ -363,6 +364,12 @@ class Emulator:
         for n, lamp in enumerate(self.repeat_lamps):
             lamp.config(fg=green if self.repeat > n else off)
         self.shuffle_lamp.config(fg=green if self.shuffle else off)
+
+    def _fader_dragged(self, _event):
+        # Mirrors the real fader's live reporting while held (Fader::_onDrag in the firmware):
+        # spam MOVE_TO as it moves, not just once on release.
+        if self.track_len:
+            self._send(Cmd.MOVE_TO, str(int(self.fader.get())))
 
     def _fader_released(self, _event):
         self.dragging = False

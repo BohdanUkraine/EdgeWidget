@@ -1,0 +1,211 @@
+2026-10-23 16:20:37,285 - aqt.main - INFO - installer 12476 aqtinstall(aqt) v3.3.0 on Python 3.13.15 [CPython MSC v.1944 64 bit (AMD64)]
+2026-10-23 16:20:37,286 - aqt.helper - DEBUG - helper 12476 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/Updates.xml.sha256
+2026-10-23 16:20:38,139 - aqt.helper - DEBUG - helper 12476 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtwebengine/683/msvc2022_64/Updates.xml.sha256
+2026-10-23 16:20:38,898 - aqt.archives - INFO - archives 12476 Found extension qtwebengine
+2026-10-23 16:20:38,898 - aqt.helper - DEBUG - helper 12476 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/extensions/qtpdf/683/msvc2022_64/Updates.xml.sha256
+2026-10-23 16:20:39,664 - aqt.archives - INFO - archives 12476 Found extension qtpdf
+2026-10-23 16:20:40,258 - aqt.helper - DEBUG - helper 40104 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.addons.qtconnectivity.win64_msvc2022_64/6.8.3-0-202503201308qtconnectivity-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-10-23 16:20:40,259 - aqt.helper - DEBUG - helper 30616 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-10-23 16:20:40,262 - aqt.helper - DEBUG - helper 32300 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-10-23 16:20:40,263 - aqt.helper - DEBUG - helper 25868 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-10-23 16:20:40,733 - aqt.helper - INFO - helper 25868 Downloading qtsvg...
+2026-10-23 16:20:40,733 - aqt.installer - DEBUG - installer 25868 Download URL: https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:40,739 - aqt.helper - INFO - helper 32300 Downloading qtdeclarative...
+2026-10-23 16:20:40,739 - aqt.installer - DEBUG - installer 32300 Download URL: https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:40,746 - aqt.helper - INFO - helper 30616 Downloading qtbase...
+2026-10-23 16:20:40,746 - aqt.helper - INFO - helper 40104 Downloading qtconnectivity...
+2026-10-23 16:20:40,746 - aqt.installer - DEBUG - installer 30616 Download URL: https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:40,746 - aqt.installer - DEBUG - installer 40104 Download URL: https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.addons.qtconnectivity.win64_msvc2022_64/6.8.3-0-202503201308qtconnectivity-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:41,189 - aqt.helper - DEBUG - helper 25868 Asked to redirect(302) to: https://www.nic.funet.fi/pub/mirrors/download.qt-project.org/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:41,190 - aqt.helper - INFO - helper 25868 Redirected: www.nic.funet.fi
+2026-10-23 16:20:41,192 - aqt.helper - DEBUG - helper 32300 Asked to redirect(302) to: https://www.nic.funet.fi/pub/mirrors/download.qt-project.org/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:41,192 - aqt.helper - INFO - helper 32300 Redirected: www.nic.funet.fi
+2026-10-23 16:20:41,204 - aqt.helper - DEBUG - helper 40104 Asked to redirect(302) to: https://www.nic.funet.fi/pub/mirrors/download.qt-project.org/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.addons.qtconnectivity.win64_msvc2022_64/6.8.3-0-202503201308qtconnectivity-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:41,205 - aqt.helper - INFO - helper 40104 Redirected: www.nic.funet.fi
+2026-10-23 16:20:41,306 - aqt.helper - DEBUG - helper 30616 Asked to redirect(302) to: https://www.nic.funet.fi/pub/mirrors/download.qt-project.org/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:41,306 - aqt.helper - INFO - helper 30616 Redirected: www.nic.funet.fi
+2026-10-23 16:20:42,174 - aqt.installer - INFO - installer 25868 Finished installation of qtsvg-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z in 1.91487230
+2026-10-23 16:20:42,184 - aqt.helper - DEBUG - helper 25868 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-10-23 16:20:42,382 - aqt.installer - INFO - installer 40104 Finished installation of qtconnectivity-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z in 2.12687970
+2026-10-23 16:20:42,393 - aqt.helper - DEBUG - helper 40104 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qttranslations-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z.sha256
+2026-10-23 16:20:42,563 - aqt.helper - INFO - helper 25868 Downloading qttools...
+2026-10-23 16:20:42,564 - aqt.installer - DEBUG - installer 25868 Download URL: https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:42,787 - aqt.helper - INFO - helper 40104 Downloading qttranslations...
+2026-10-23 16:20:42,788 - aqt.installer - DEBUG - installer 40104 Download URL: https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qttranslations-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:42,951 - aqt.helper - DEBUG - helper 25868 Asked to redirect(302) to: https://www.nic.funet.fi/pub/mirrors/download.qt-project.org/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:42,951 - aqt.helper - INFO - helper 25868 Redirected: www.nic.funet.fi
+2026-10-23 16:20:43,183 - aqt.helper - DEBUG - helper 40104 Asked to redirect(302) to: https://www.nic.funet.fi/pub/mirrors/download.qt-project.org/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308qttranslations-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z
+2026-10-23 16:20:43,183 - aqt.helper - INFO - helper 40104 Redirected: www.nic.funet.fi
+2026-10-23 16:20:44,412 - aqt.installer - INFO - installer 40104 Finished installation of qttranslations-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z in 2.02157800
+2026-10-23 16:20:44,423 - aqt.helper - DEBUG - helper 40104 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308d3dcompiler_47-x64.7z.sha256
+2026-10-23 16:20:44,810 - aqt.helper - INFO - helper 40104 Downloading d3dcompiler_47...
+2026-10-23 16:20:44,810 - aqt.installer - DEBUG - installer 40104 Download URL: https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308d3dcompiler_47-x64.7z
+2026-10-23 16:20:45,207 - aqt.helper - DEBUG - helper 40104 Asked to redirect(302) to: https://www.nic.funet.fi/pub/mirrors/download.qt-project.org/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308d3dcompiler_47-x64.7z
+2026-10-23 16:20:45,207 - aqt.helper - INFO - helper 40104 Redirected: www.nic.funet.fi
+2026-10-23 16:20:46,095 - aqt.installer - INFO - installer 40104 Finished installation of d3dcompiler_47-x64.7z in 1.67416190
+2026-10-23 16:20:46,109 - aqt.helper - DEBUG - helper 40104 Attempt to download checksum at https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308opengl32sw-64-mesa_11_2_2-signed_sha256.7z.sha256
+2026-10-23 16:20:46,489 - aqt.helper - INFO - helper 40104 Downloading opengl32sw...
+2026-10-23 16:20:46,490 - aqt.installer - DEBUG - installer 40104 Download URL: https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308opengl32sw-64-mesa_11_2_2-signed_sha256.7z
+2026-10-23 16:20:46,915 - aqt.helper - DEBUG - helper 40104 Asked to redirect(302) to: https://www.nic.funet.fi/pub/mirrors/download.qt-project.org/online/qtsdkrepository/windows_x86/desktop/qt6_683/qt6_683/qt.qt6.683.win64_msvc2022_64/6.8.3-0-202503201308opengl32sw-64-mesa_11_2_2-signed_sha256.7z
+2026-10-23 16:20:46,915 - aqt.helper - INFO - helper 40104 Redirected: www.nic.funet.fi
+2026-10-23 16:20:47,418 - aqt.installer - INFO - installer 25868 Finished installation of qttools-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z in 5.23643120
+2026-10-23 16:20:48,227 - aqt.installer - INFO - installer 40104 Finished installation of opengl32sw-64-mesa_11_2_2-signed_sha256.7z in 2.12197340
+2026-10-23 16:20:52,208 - aqt.installer - INFO - installer 30616 Finished installation of qtbase-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z in 11.95302260
+2026-10-23 16:21:11,812 - aqt.installer - INFO - installer 32300 Finished installation of qtdeclarative-Windows-Windows_11_23H2-MSVC2022-Windows-Windows_11_23H2-X86_64.7z in 31.55272960
+2026-10-23 16:21:12,156 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\bin\qmake.exe
+2026-10-23 16:21:12,165 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Bluetooth.prl
+2026-10-23 16:21:12,170 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Bluetoothd.prl
+2026-10-23 16:21:12,175 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Concurrent.prl
+2026-10-23 16:21:12,179 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Concurrentd.prl
+2026-10-23 16:21:12,183 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Core.prl
+2026-10-23 16:21:12,188 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Cored.prl
+2026-10-23 16:21:12,193 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6DBus.prl
+2026-10-23 16:21:12,196 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6DBusd.prl
+2026-10-23 16:21:12,201 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Designer.prl
+2026-10-23 16:21:12,205 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6DesignerComponents.prl
+2026-10-23 16:21:12,210 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6DesignerComponentsd.prl
+2026-10-23 16:21:12,214 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Designerd.prl
+2026-10-23 16:21:12,218 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6DeviceDiscoverySupport.prl
+2026-10-23 16:21:12,222 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6DeviceDiscoverySupportd.prl
+2026-10-23 16:21:12,227 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6EntryPoint.prl
+2026-10-23 16:21:12,231 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6EntryPointd.prl
+2026-10-23 16:21:12,235 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6ExampleIcons.prl
+2026-10-23 16:21:12,240 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6ExampleIconsd.prl
+2026-10-23 16:21:12,244 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6ExamplesAssetDownloader.prl
+2026-10-23 16:21:12,248 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6ExamplesAssetDownloaderd.prl
+2026-10-23 16:21:12,253 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6FbSupport.prl
+2026-10-23 16:21:12,257 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6FbSupportd.prl
+2026-10-23 16:21:12,262 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Gui.prl
+2026-10-23 16:21:12,266 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Guid.prl
+2026-10-23 16:21:12,270 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Help.prl
+2026-10-23 16:21:12,274 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Helpd.prl
+2026-10-23 16:21:12,279 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsAnimation.prl
+2026-10-23 16:21:12,283 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsAnimationd.prl
+2026-10-23 16:21:12,287 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsFolderListModel.prl
+2026-10-23 16:21:12,290 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsFolderListModeld.prl
+2026-10-23 16:21:12,295 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsPlatform.prl
+2026-10-23 16:21:12,299 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsPlatformd.prl
+2026-10-23 16:21:12,303 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsQmlModels.prl
+2026-10-23 16:21:12,307 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsQmlModelsd.prl
+2026-10-23 16:21:12,311 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsSettings.prl
+2026-10-23 16:21:12,315 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsSettingsd.prl
+2026-10-23 16:21:12,320 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsSharedImage.prl
+2026-10-23 16:21:12,324 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsSharedImaged.prl
+2026-10-23 16:21:12,328 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsWavefrontMesh.prl
+2026-10-23 16:21:12,332 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6LabsWavefrontMeshd.prl
+2026-10-23 16:21:12,337 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Network.prl
+2026-10-23 16:21:12,341 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Networkd.prl
+2026-10-23 16:21:12,345 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Nfc.prl
+2026-10-23 16:21:12,350 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Nfcd.prl
+2026-10-23 16:21:12,354 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6OpenGL.prl
+2026-10-23 16:21:12,358 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6OpenGLd.prl
+2026-10-23 16:21:12,365 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6OpenGLWidgets.prl
+2026-10-23 16:21:12,369 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6OpenGLWidgetsd.prl
+2026-10-23 16:21:12,373 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6PacketProtocol.prl
+2026-10-23 16:21:12,378 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6PacketProtocold.prl
+2026-10-23 16:21:12,382 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6PrintSupport.prl
+2026-10-23 16:21:12,386 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6PrintSupportd.prl
+2026-10-23 16:21:12,391 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Qml.prl
+2026-10-23 16:21:12,395 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlAssetDownloader.prl
+2026-10-23 16:21:12,400 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlAssetDownloaderd.prl
+2026-10-23 16:21:12,404 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlCompiler.prl
+2026-10-23 16:21:12,408 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlCompilerd.prl
+2026-10-23 16:21:12,412 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlCore.prl
+2026-10-23 16:21:12,417 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlCored.prl
+2026-10-23 16:21:12,421 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Qmld.prl
+2026-10-23 16:21:12,425 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlDebug.prl
+2026-10-23 16:21:12,430 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlDebugd.prl
+2026-10-23 16:21:12,434 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlDom.prl
+2026-10-23 16:21:12,438 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlDomd.prl
+2026-10-23 16:21:12,442 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlLocalStorage.prl
+2026-10-23 16:21:12,449 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlLocalStoraged.prl
+2026-10-23 16:21:12,453 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlLS.prl
+2026-10-23 16:21:12,457 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlLSd.prl
+2026-10-23 16:21:12,462 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlMeta.prl
+2026-10-23 16:21:12,466 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlMetad.prl
+2026-10-23 16:21:12,470 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlModels.prl
+2026-10-23 16:21:12,474 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlModelsd.prl
+2026-10-23 16:21:12,478 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlNetwork.prl
+2026-10-23 16:21:12,482 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlNetworkd.prl
+2026-10-23 16:21:12,486 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlToolingSettings.prl
+2026-10-23 16:21:12,493 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlToolingSettingsd.prl
+2026-10-23 16:21:12,500 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlTypeRegistrar.prl
+2026-10-23 16:21:12,505 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlTypeRegistrard.prl
+2026-10-23 16:21:12,509 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlWorkerScript.prl
+2026-10-23 16:21:12,513 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlWorkerScriptd.prl
+2026-10-23 16:21:12,517 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlXmlListModel.prl
+2026-10-23 16:21:12,522 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QmlXmlListModeld.prl
+2026-10-23 16:21:12,526 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Quick.prl
+2026-10-23 16:21:12,531 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2.prl
+2026-10-23 16:21:12,535 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Basic.prl
+2026-10-23 16:21:12,540 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Basicd.prl
+2026-10-23 16:21:12,544 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2BasicStyleImpl.prl
+2026-10-23 16:21:12,549 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2BasicStyleImpld.prl
+2026-10-23 16:21:12,554 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2d.prl
+2026-10-23 16:21:12,558 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2FluentWinUI3StyleImpl.prl
+2026-10-23 16:21:12,562 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2FluentWinUI3StyleImpld.prl
+2026-10-23 16:21:12,566 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Fusion.prl
+2026-10-23 16:21:12,570 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Fusiond.prl
+2026-10-23 16:21:12,575 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2FusionStyleImpl.prl
+2026-10-23 16:21:12,585 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2FusionStyleImpld.prl
+2026-10-23 16:21:12,589 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Imagine.prl
+2026-10-23 16:21:12,608 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Imagined.prl
+2026-10-23 16:21:12,612 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2ImagineStyleImpl.prl
+2026-10-23 16:21:12,616 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2ImagineStyleImpld.prl
+2026-10-23 16:21:12,620 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Impl.prl
+2026-10-23 16:21:12,625 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Impld.prl
+2026-10-23 16:21:12,629 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Material.prl
+2026-10-23 16:21:12,633 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Materiald.prl
+2026-10-23 16:21:12,637 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2MaterialStyleImpl.prl
+2026-10-23 16:21:12,644 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2MaterialStyleImpld.prl
+2026-10-23 16:21:12,648 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Universal.prl
+2026-10-23 16:21:12,652 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2Universald.prl
+2026-10-23 16:21:12,657 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2UniversalStyleImpl.prl
+2026-10-23 16:21:12,661 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2UniversalStyleImpld.prl
+2026-10-23 16:21:12,666 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2WindowsStyleImpl.prl
+2026-10-23 16:21:12,670 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControls2WindowsStyleImpld.prl
+2026-10-23 16:21:12,675 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControlsTestUtils.prl
+2026-10-23 16:21:12,680 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickControlsTestUtilsd.prl
+2026-10-23 16:21:12,684 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Quickd.prl
+2026-10-23 16:21:12,688 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickDialogs2.prl
+2026-10-23 16:21:12,693 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickDialogs2d.prl
+2026-10-23 16:21:12,697 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickDialogs2QuickImpl.prl
+2026-10-23 16:21:12,701 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickDialogs2QuickImpld.prl
+2026-10-23 16:21:12,706 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickDialogs2Utils.prl
+2026-10-23 16:21:12,710 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickDialogs2Utilsd.prl
+2026-10-23 16:21:12,714 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickEffects.prl
+2026-10-23 16:21:12,719 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickEffectsd.prl
+2026-10-23 16:21:12,723 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickLayouts.prl
+2026-10-23 16:21:12,727 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickLayoutsd.prl
+2026-10-23 16:21:12,731 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickParticles.prl
+2026-10-23 16:21:12,736 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickParticlesd.prl
+2026-10-23 16:21:12,740 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickShapes.prl
+2026-10-23 16:21:12,744 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickShapesd.prl
+2026-10-23 16:21:12,749 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickTemplates2.prl
+2026-10-23 16:21:12,753 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickTemplates2d.prl
+2026-10-23 16:21:12,757 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickTest.prl
+2026-10-23 16:21:12,762 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickTestd.prl
+2026-10-23 16:21:12,771 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickTestUtils.prl
+2026-10-23 16:21:12,776 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickTestUtilsd.prl
+2026-10-23 16:21:12,781 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickVectorImage.prl
+2026-10-23 16:21:12,788 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickVectorImaged.prl
+2026-10-23 16:21:12,793 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickVectorImageGenerator.prl
+2026-10-23 16:21:12,797 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickVectorImageGeneratord.prl
+2026-10-23 16:21:12,802 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickWidgets.prl
+2026-10-23 16:21:12,806 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6QuickWidgetsd.prl
+2026-10-23 16:21:12,811 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Sql.prl
+2026-10-23 16:21:12,815 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Sqld.prl
+2026-10-23 16:21:12,819 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Svg.prl
+2026-10-23 16:21:12,823 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Svgd.prl
+2026-10-23 16:21:12,827 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6SvgWidgets.prl
+2026-10-23 16:21:12,831 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6SvgWidgetsd.prl
+2026-10-23 16:21:12,835 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Test.prl
+2026-10-23 16:21:12,840 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Testd.prl
+2026-10-23 16:21:12,844 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6UiTools.prl
+2026-10-23 16:21:12,848 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6UiToolsd.prl
+2026-10-23 16:21:12,852 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Widgets.prl
+2026-10-23 16:21:12,856 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Widgetsd.prl
+2026-10-23 16:21:12,861 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Xml.prl
+2026-10-23 16:21:12,865 - aqt.updater - INFO - updater 12476 Patching C:\Qt\6.8.3\msvc2022_64\lib\Qt6Xmld.prl
+2026-10-23 16:21:12,870 - aqt.main - INFO - installer 12476 Finished installation
+2026-10-23 16:21:12,870 - aqt.main - INFO - installer 12476 Time elapsed: 35.58533470 second

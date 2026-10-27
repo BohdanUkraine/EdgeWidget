@@ -73,12 +73,26 @@ QSize EdgePanel::panelSize() const
 
 int EdgePanel::handleHeight() const
 {
+    if (!AppSettings::instance().handleVisible())
+        return 0; // collapses to nothing: see applyGeometry()
     return std::clamp(AppSettings::instance().handleHeight(), 40, panelSize().height());
+}
+
+// Collapsed (m_reveal 0), "show the tab" alone decides whether anything is on screen. Expanded,
+// the handle stays alongside the content either way (so there is still something to grab to
+// close it) — unlike handleHeight() above, width doesn't cancel out of applyGeometry()'s own
+// formula on its own, so without this blend, toggling the setting while already open would
+// jump the window's width in one step instead of only ever changing it through the slide.
+int EdgePanel::handleWidth() const
+{
+    const int w = AppSettings::instance().handleWidth();
+    const int collapsed = AppSettings::instance().handleVisible() ? w : 0;
+    return int(std::lround(collapsed + (w - collapsed) * m_reveal));
 }
 
 QRect EdgePanel::handleRect() const
 {
-    const int w = AppSettings::instance().handleWidth();
+    const int w = handleWidth();
     const int x = rightSide() ? 0 : width() - w;
     return QRect(x, 0, w, height());
 }
@@ -118,7 +132,7 @@ void EdgePanel::applyGeometry()
 {
     const QRect area = availableArea();
     const QSize panel = panelSize();
-    const int handleW = AppSettings::instance().handleWidth();
+    const int handleW = handleWidth();
     const qreal position = m_dragPosition.value_or(AppSettings::instance().position());
 
     const int visible = int(std::lround(m_reveal * panel.width()));
