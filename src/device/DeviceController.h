@@ -40,6 +40,7 @@ signals:
     // Playlist fader mode, while the device fader is moving: a live preview, not a commitment yet.
     void playlistScrubMoved(const QList<Track> &tracks, int index);
     void playlistScrubEnded(); // settled: the index above is now the real, committed track
+    void spotifyVolumeChanged(int percent); // the knob, while it controls Spotify (nothing else shows it)
 
 private:
     void onMessage(const MediaSpin::Message &message);

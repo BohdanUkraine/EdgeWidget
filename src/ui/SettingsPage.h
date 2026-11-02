@@ -80,6 +80,8 @@ private:
     QLabel *m_playerStatus = nullptr;
     QPushButton *m_faderTimeline = nullptr;
     QPushButton *m_faderPlaylist = nullptr;
+    QPushButton *m_volumeSystem = nullptr;
+    QPushButton *m_volumeSpotify = nullptr;
 
     bool m_syncing = false; // true while controls are set from AppSettings (no write-back)
     QString m_styleKey;     // theme + accent the stylesheet was built for

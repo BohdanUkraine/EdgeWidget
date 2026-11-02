@@ -1,6 +1,7 @@
 #include "ui/PlaylistScrubPopup.h"
 
 #include "app/AppSettings.h"
+#include "ui/VolumeOverlay.h"
 #include "ui/library/LibraryStyle.h"
 
 #include <QGuiApplication>
@@ -146,7 +147,16 @@ void PlaylistScrubPopup::applyGeometry()
         y = m_panelRect.top() - kMargin - size.height();
     }
     y = std::max(y, area.top());
-    setGeometry(x, y, size.width(), size.height());
+
+    // Stands clear of the volume scale's spot even while the scale is hidden: stepping aside
+    // only when it appears would make this jump in the middle of a scrub.
+    QRect rect(QPoint(x, y), size);
+    if (AppSettings::instance().volumeTarget() == AppSettings::VolumeTarget::Spotify) {
+        const QRect volume = VolumeOverlay::slot(parentWidget());
+        if (rect.intersects(volume))
+            rect.moveRight(volume.left() - 1);
+    }
+    setGeometry(rect);
 }
 
 void PlaylistScrubPopup::paintEvent(QPaintEvent *)

@@ -24,6 +24,7 @@ namespace {
 const QString kApi = QStringLiteral("https://api.spotify.com/v1");
 constexpr int kMaxTracks = 500;
 constexpr int kDeviceWaitAttempts = 18; // ~18 s for a freshly started Spotify to register
+constexpr int kVolumeIntervalMs = 300;  // the Web API answers 429 to a knob's every step
 
 QString libraryCachePath()
 {
@@ -76,6 +77,13 @@ SpotifyClient::SpotifyClient(QObject *parent)
     cache->setCacheDirectory(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/images");
     cache->setMaximumCacheSize(100 * 1024 * 1024);
     m_nam.setCache(cache);
+
+    m_volumeThrottle.setSingleShot(true);
+    m_volumeThrottle.setInterval(kVolumeIntervalMs);
+    connect(&m_volumeThrottle, &QTimer::timeout, this, [this] {
+        if (m_volumeWanted != m_volumeSent)
+            sendVolume();
+    });
 
     connect(m_auth, &SpotifyAuth::error, this, &SpotifyClient::error);
     connect(m_auth, &SpotifyAuth::loggedOut, this, &SpotifyClient::onLoggedOut);
@@ -548,7 +556,16 @@ void SpotifyClient::playerCommand(const QByteArray &verb, const QString &path)
 
 void SpotifyClient::setVolume(int percent)
 {
-    request("PUT", QStringLiteral("/me/player/volume?volume_percent=%1").arg(percent), {},
+    m_volumeWanted = percent;
+    if (!m_volumeThrottle.isActive())
+        sendVolume();
+}
+
+void SpotifyClient::sendVolume()
+{
+    m_volumeSent = m_volumeWanted;
+    m_volumeThrottle.start();
+    request("PUT", QStringLiteral("/me/player/volume?volume_percent=%1").arg(m_volumeSent), {},
             [this](int status, const QByteArray &reply) {
         if (status == 403) {
             if (!m_volumeRefused.isValid() || m_volumeRefused.elapsed() > 30000) {

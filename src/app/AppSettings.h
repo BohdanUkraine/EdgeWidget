@@ -14,6 +14,8 @@ public:
     enum class Layer { BelowWindows, AboveWindows, AboveAll }; // AboveWindows: full-screen apps cover it
     // What the device's fader controls: time within the track, or which track in the playlist.
     enum class FaderMode { Timeline, Playlist };
+    // What the device's volume knob controls.
+    enum class VolumeTarget { System, Spotify };
 
     static AppSettings &instance();
 
@@ -30,6 +32,7 @@ public:
     QString language() const { return m_language; }      // "auto", "uk", "en"
     Layer layer() const { return m_layer; }
     FaderMode faderMode() const { return m_faderMode; }
+    VolumeTarget volumeTarget() const { return m_volumeTarget; }
 
     void setScale(qreal value);
     void setHandleWidth(int value);
@@ -44,6 +47,7 @@ public:
     void setLanguage(const QString &value);
     void setLayer(Layer value);
     void setFaderMode(FaderMode value);
+    void setVolumeTarget(VolumeTarget value);
     void resetToDefaults();
 
 signals:
@@ -66,6 +70,7 @@ private:
     QString m_language;
     Layer m_layer;
     FaderMode m_faderMode;
+    VolumeTarget m_volumeTarget;
 };
 
 inline qreal uiScale()

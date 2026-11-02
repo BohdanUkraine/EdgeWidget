@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <audiopolicy.h>
+#include <endpointvolume.h>
 #include <mmdeviceapi.h>
 
 #include "platform/AppVolume.h"
@@ -27,6 +28,26 @@ bool isProgram(DWORD pid, const wchar_t *exeName)
 } // namespace
 
 namespace AppVolume {
+
+bool setSystem(int percent)
+{
+    const HRESULT init = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    bool ok = false;
+    try {
+        auto enumerator = winrt::create_instance<IMMDeviceEnumerator>(__uuidof(MMDeviceEnumerator), CLSCTX_ALL);
+        winrt::com_ptr<IMMDevice> device;
+        winrt::check_hresult(enumerator->GetDefaultAudioEndpoint(eRender, eConsole, device.put()));
+        winrt::com_ptr<IAudioEndpointVolume> volume;
+        winrt::check_hresult(device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, volume.put_void()));
+        if (percent > 0)
+            volume->SetMute(FALSE, nullptr); // turning the knob up must be heard
+        ok = SUCCEEDED(volume->SetMasterVolumeLevelScalar(std::clamp(percent, 0, 100) / 100.0f, nullptr));
+    } catch (const winrt::hresult_error &) {
+    }
+    if (SUCCEEDED(init))
+        CoUninitialize();
+    return ok;
+}
 
 bool setSpotify(int percent)
 {

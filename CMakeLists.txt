@@ -58,6 +58,7 @@ qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/ui/SpotifySetup.cpp src/ui/SpotifySetup.h
     src/ui/TrayIcon.cpp src/ui/TrayIcon.h
     src/ui/VinylIcon.cpp src/ui/VinylIcon.h
+    src/ui/VolumeOverlay.cpp src/ui/VolumeOverlay.h
     src/ui/library/LibraryView.cpp src/ui/library/LibraryView.h
     src/ui/library/LibraryStyle.cpp src/ui/library/LibraryStyle.h
     src/ui/library/TrackListPopup.cpp src/ui/library/TrackListPopup.h

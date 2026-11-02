@@ -302,6 +302,16 @@ void SettingsPage::addPlayerSection(QGridLayout *grid, int &row)
                                                      : AppSettings::FaderMode::Timeline);
     });
     addHint(grid, row, tr("Плейлист: фейдер вибирає трек у плейлисті замість позиції в треку."));
+
+    const auto volumeTargets = addChoice(grid, row, tr("Гучність"), { tr("Комп'ютер"), tr("Spotify") });
+    m_volumeSystem = volumeTargets[0];
+    m_volumeSpotify = volumeTargets[1];
+    connect(m_volumeSpotify, &QPushButton::toggled, this, [this](bool on) {
+        if (!m_syncing)
+            AppSettings::instance().setVolumeTarget(on ? AppSettings::VolumeTarget::Spotify
+                                                       : AppSettings::VolumeTarget::System);
+    });
+    addHint(grid, row, tr("Крутилка програвача: гучність усього комп'ютера або лише Spotify."));
 }
 
 void SettingsPage::addAboutSection(QGridLayout *grid, int &row)
@@ -400,6 +410,7 @@ void SettingsPage::syncFromSettings()
     m_language->setCurrentIndex(std::max(0, m_language->findData(s.language())));
     m_layer->setCurrentIndex(int(s.layer()));
     (s.faderMode() == AppSettings::FaderMode::Playlist ? m_faderPlaylist : m_faderTimeline)->setChecked(true);
+    (s.volumeTarget() == AppSettings::VolumeTarget::Spotify ? m_volumeSpotify : m_volumeSystem)->setChecked(true);
     m_syncing = false;
     applyStyle();
 }

@@ -39,6 +39,7 @@ AppSettings::AppSettings()
     m_language = s.value("language", "auto").toString();
     m_layer = Layer(std::clamp(s.value("layer", int(Layer::AboveWindows)).toInt(), 0, 2));
     m_faderMode = FaderMode(std::clamp(s.value("faderMode", int(FaderMode::Timeline)).toInt(), 0, 1));
+    m_volumeTarget = VolumeTarget(std::clamp(s.value("volumeTarget", int(VolumeTarget::Spotify)).toInt(), 0, 1));
 }
 
 void AppSettings::save() const
@@ -58,6 +59,7 @@ void AppSettings::save() const
     s.setValue("language", m_language);
     s.setValue("layer", int(m_layer));
     s.setValue("faderMode", int(m_faderMode));
+    s.setValue("volumeTarget", int(m_volumeTarget));
 }
 
 #define SETTER(name, member, type)        \
@@ -83,6 +85,7 @@ SETTER(setAccent, m_accent, const QColor &)
 SETTER(setLanguage, m_language, const QString &)
 SETTER(setLayer, m_layer, Layer)
 SETTER(setFaderMode, m_faderMode, FaderMode)
+SETTER(setVolumeTarget, m_volumeTarget, VolumeTarget)
 
 #undef SETTER
 
@@ -101,6 +104,7 @@ void AppSettings::resetToDefaults()
     m_language = QStringLiteral("auto");
     m_layer = Layer::AboveWindows;
     m_faderMode = FaderMode::Timeline;
+    m_volumeTarget = VolumeTarget::Spotify;
     save();
     emit changed();
 }

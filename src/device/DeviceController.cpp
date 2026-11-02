@@ -2,6 +2,7 @@
 
 #include "app/AppSettings.h"
 #include "device/DeviceLink.h"
+#include "platform/AppVolume.h"
 #include "playback/MediaController.h"
 
 #include <QDebug>
@@ -225,7 +226,16 @@ void DeviceController::onMessage(const MediaSpin::Message &message)
             m_media->seek(qint64(message.data.toDouble() * 1000));
         }
         break;
-    case Command::SetVolume: m_media->setVolume(std::clamp(message.data.toInt(), 0, 100)); break;
+    case Command::SetVolume: {
+        const int percent = std::clamp(message.data.toInt(), 0, 100);
+        if (AppSettings::instance().volumeTarget() == AppSettings::VolumeTarget::System) {
+            AppVolume::setSystem(percent);
+        } else {
+            m_media->setVolume(percent);
+            emit spotifyVolumeChanged(percent);
+        }
+        break;
+    }
     case Command::Error: emit deviceError(message.data); break; // the device words it for the user
     case Command::RequestSync:
         qDebug().noquote() << "[fader] REQUEST_SYNC: device asked for the full state again";

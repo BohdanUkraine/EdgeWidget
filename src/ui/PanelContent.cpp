@@ -7,6 +7,7 @@
 #include "ui/PanelLayout.h"
 #include "ui/PlayerView.h"
 #include "ui/PlaylistScrubPopup.h"
+#include "ui/VolumeOverlay.h"
 #include "ui/SettingsPage.h"
 #include "ui/TabStrip.h"
 #include "ui/library/TrackListPopup.h"
@@ -78,6 +79,8 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
         }
     });
     connect(device, &DeviceController::playlistScrubEnded, this, [this] { m_scrubPopup->hidePreview(); });
+    auto *volumeOverlay = new VolumeOverlay(parent ? parent->window() : nullptr);
+    connect(device, &DeviceController::spotifyVolumeChanged, volumeOverlay, &VolumeOverlay::showLevel);
 
     // Library list <-> track list card.
     connect(m_library, &LibraryView::togglePlayRequested, media, &MediaController::togglePlayPause);

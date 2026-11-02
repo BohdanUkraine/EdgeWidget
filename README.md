@@ -58,6 +58,7 @@ src/
 | `ui` | `SpotifySetup` | вікно підключення (Client ID) |
 | `ui` | `TrayIcon` | іконка-платівка в треї |
 | `ui` | `VinylIcon` | малюнок платівки для трею, вікна й `resources/EdgeWidget.ico` / `.icns` (`scripts/make-icon.ps1`) |
+| `ui` | `VolumeOverlay` | шкала гучності в правому нижньому куті, поки крутилка програвача міняє гучність Spotify |
 | `ui/library` | `LibraryView`, `TrackListPopup` | список бібліотеки / картка з треками альбому |
 | `ui/library` | `LibraryStyle` | спільне малювання рядків, кеш обкладинок, скрол жестом |
 | `device` | `MediaSpinProtocol` | protobuf `MessageRequest` вручну (без libprotobuf), рамки з varint-довжиною |
@@ -73,7 +74,7 @@ src/
 | `platform` | `SecretStore` | секрети: Windows — DPAPI у QSettings, macOS — Keychain, Linux — Secret Service (libsecret) |
 | `platform` | `SpotifyApp` | чи запущено Spotify і тихий запуск (`--minimized` / приховано у фоні) |
 | `platform` | `Autostart` | автозапуск: Windows — `HKCU\…\Run`, macOS — LaunchAgent, Linux — `~/.config/autostart` |
-| `platform` | `AppVolume` | гучність Spotify у мікшері Windows (запасний варіант без входу); на macOS / Linux немає |
+| `platform` | `AppVolume` | системна гучність (Windows — WASAPI, macOS — `osascript`, Linux — `wpctl` / `pactl`) і гучність Spotify у мікшері Windows (запасний варіант без входу) |
 | `platform` | `AppInit` | до створення `QApplication`: Linux під Wayland іде через XWayland |
 | `platform` | `CoverFetcher` | обкладинка за https-URL (macOS, Linux) |
 
@@ -115,6 +116,9 @@ python ../emulator/mediaspin_emulator.py
 
 Програвач MediaSpin по BLE (`device/BleLink`):
 
+- [ ] **Крутилка, коли гучність Spotify недоступна.** Музика грає на телефоні: Web API відповідає 403,
+  а `VolumeOverlay` усе одно показує нове значення. Продумати, що робити: показати це в шкалі,
+  чи перемикати на гучність комп'ютера.
 - [ ] **Прив'язка до свого програвача.** Зараз віджет підключається до першого-ліпшого `MediaSpin` поруч:
   два програвачі в кімнаті — і не гарантовано, що до твого. Запам'ятати адресу після першого
   підключення (у `AppSettings`) і далі підключатися лише до неї; «забути програвач» — у налаштуваннях.
@@ -204,7 +208,7 @@ Gatekeeper не дасть покупцям запустити програму 
   «Edge Widget хоче керувати Spotify» (текст — `NSAppleEventsUsageDescription` в
   `packaging/mac/Info.plist.in`). Стан опитується раз на секунду (`osascript`), подій немає.
   AppleScript знає тільки «повтор увімк/вимк» — повтор одного треку на маку не вмикається.
-- **Гучність** — тільки через Web API (системного мікшера по програмах на маку немає).
+- **Гучність Spotify** — тільки через Web API (системного мікшера по програмах на маку немає).
 - **Вікно** — на всіх робочих столах (Spaces); «поверх вікон» = плаваючий рівень,
   повноекранні програми й так у своєму Space; «поверх усього» показується й над ними.
 - **Без іконки в Dock** (`LSUIElement`), іконка-платівка — у рядку меню.
@@ -250,7 +254,7 @@ linuxdeploy скрипт завантажує сам.
 - **Токен Spotify** — у Secret Service (GNOME Keyring, KWallet); якщо його немає — у файлі налаштувань.
 - **Автостарт** — `~/.config/autostart/edgewidget.desktop` (для AppImage — шлях до самого файлу).
 - **Трей** — на GNOME (Fedora) без розширення AppIndicator іконки в треї немає; панель працює й без неї.
-- **Гучність** — тільки через Web API.
+- **Гучність Spotify** — тільки через Web API.
 
 ## Як продавати без комерційної ліцензії Qt (LGPLv3)
 

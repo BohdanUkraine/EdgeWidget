@@ -3,6 +3,7 @@
 #include "app/MediaState.h"
 
 #include <QElapsedTimer>
+#include <QTimer>
 #include <QImage>
 #include <QList>
 #include <QNetworkAccessManager>
@@ -67,7 +68,7 @@ public:
     // What plays on any device (cover not loaded: coverUrl instead).
     void fetchPlayback(std::function<void(const MediaState &state, const QString &coverUrl)> done);
     void playerCommand(const QByteArray &verb, const QString &path); // e.g. PUT /me/player/pause
-    void setVolume(int percent); // of the active device; phones refuse it
+    void setVolume(int percent); // of the active device, rate-limited (a knob sends many); phones refuse it
 
 signals:
     void connectedChanged(bool connected);
@@ -86,6 +87,7 @@ private:
     void playOnAnyDevice(const QByteArray &body, int attempt = 0);
     void fetchLastPlayedContext(); // updateNowPlaying() fallback: no live Connect session to ask
     void setActiveUri(const QString &uri);
+    void sendVolume();
     void onLoggedOut(bool wasConnected);
     void loadLibraryCache();
     void saveLibraryCache() const;
@@ -101,6 +103,9 @@ private:
     bool m_loading = false;
     QString m_activeUri;
     QElapsedTimer m_volumeRefused; // one "can't change the volume" message per drag, not per step
+    QTimer m_volumeThrottle;       // running: a request just went out, later values wait for it
+    int m_volumeWanted = -1;       // latest value asked for
+    int m_volumeSent = -1;
     QString m_userId;
     QString m_userName;
 };
