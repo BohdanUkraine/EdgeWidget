@@ -2,7 +2,6 @@
 
 #include "ui/ScaledWidget.h"
 
-// Vertical tabs at the right edge of the panel: library (the player) and settings.
 class TabStrip : public ScaledWidget
 {
     Q_OBJECT

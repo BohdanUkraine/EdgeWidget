@@ -10,16 +10,14 @@
 #include <tlhelp32.h>
 
 namespace {
-// Desktop app from spotify.com installs per user here.
 QString desktopExe()
 {
     const QString path = QDir(qEnvironmentVariable("APPDATA")).filePath("Spotify/Spotify.exe");
     return QFileInfo::exists(path) ? path : QString();
 }
-} // namespace
+}
 
 namespace SpotifyApp {
-
 bool isRunning()
 {
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -37,11 +35,11 @@ bool isRunning()
 bool launchQuietly()
 {
     const QString exe = desktopExe();
-    if (!exe.isEmpty()) // the same switch Spotify uses for "start with Windows": no window, just runs
+    if (!exe.isEmpty())
         return QProcess::startDetached(exe, { QStringLiteral("--minimized") });
-    // Microsoft Store version: can only be activated normally (its window shows).
+    // Microsoft Store version: can only be activated with its window.
     return QProcess::startDetached(QStringLiteral("explorer.exe"),
                                    { QStringLiteral("shell:AppsFolder\\SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify") });
 }
 
-} // namespace SpotifyApp
+}

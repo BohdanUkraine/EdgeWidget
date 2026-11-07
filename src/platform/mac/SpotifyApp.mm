@@ -4,10 +4,9 @@
 
 namespace {
 NSString *const kBundleId = @"com.spotify.client";
-} // namespace
+}
 
 namespace SpotifyApp {
-
 bool isRunning()
 {
     return [NSRunningApplication runningApplicationsWithBundleIdentifier:kBundleId].count > 0;
@@ -17,8 +16,7 @@ bool launchQuietly()
 {
     NSURL *url = [[NSWorkspace sharedWorkspace] URLForApplicationWithBundleIdentifier:kBundleId];
     if (!url)
-        return false; // not installed
-    // In the background and hidden: like Windows' --minimized.
+        return false;
     NSWorkspaceOpenConfiguration *config = [NSWorkspaceOpenConfiguration configuration];
     config.activates = NO;
     config.hides = YES;
@@ -26,4 +24,4 @@ bool launchQuietly()
     return true;
 }
 
-} // namespace SpotifyApp
+}

@@ -1,4 +1,3 @@
-// libsecret (glib) before Qt: its headers use the word "signals", which Qt defines as a macro.
 #ifdef HAVE_LIBSECRET
 #include <libsecret/secret.h>
 #endif
@@ -7,8 +6,6 @@
 
 #include <QSettings>
 
-// Secret Service (GNOME Keyring, KWallet) through libsecret. Without it (not built in, or no
-// keyring running) the value goes to the settings file, readable only by this user.
 namespace {
 const QString kFallbackGroup = QStringLiteral("secrets/");
 
@@ -22,10 +19,9 @@ const SecretSchema *schema()
     return &s;
 }
 #endif
-} // namespace
+}
 
 namespace SecretStore {
-
 QString load(const QString &key)
 {
 #ifdef HAVE_LIBSECRET
@@ -64,4 +60,4 @@ void save(const QString &key, const QString &value)
         settings.setValue(kFallbackGroup + key, value);
 }
 
-} // namespace SecretStore
+}

@@ -1,35 +1,30 @@
 cmake_minimum_required(VERSION 3.21)
 
-# macOS: one universal app (Apple silicon + Intel); Qt 6.8 needs macOS 12+. Ignored elsewhere.
 set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "")
 set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
 
 project(EdgeWidget VERSION 0.1.0 LANGUAGES CXX)
 if(APPLE)
-    enable_language(OBJCXX) # platform/mac/*.mm talk to AppKit
+    enable_language(OBJCXX)
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Flat install layout on Windows: exe and Qt DLLs side by side in the prefix root.
-# Must be set before Qt generates its deploy support file.
+# Before Qt's deploy support file: exe and Qt DLLs side by side.
 if(WIN32)
     set(CMAKE_INSTALL_BINDIR "." CACHE STRING "" FORCE)
 endif()
 
-# Only Qt Core/Gui/Widgets/Network/Bluetooth (+ DBus on Linux): all of them are available under LGPLv3.
-# Do NOT add Qt NetworkAuth (GPL-only in the open-source edition); OAuth is hand-written.
-# Bluetooth (module qtconnectivity): the MediaSpin record player over BLE.
+# LGPL modules only: no Qt NetworkAuth (GPL), see README.
 set(qt_components Widgets Network Bluetooth)
 if(UNIX AND NOT APPLE)
-    list(APPEND qt_components DBus) # MPRIS: Spotify on Linux
+    list(APPEND qt_components DBus)
 endif()
 find_package(Qt6 6.5 REQUIRED COMPONENTS ${qt_components})
 qt_standard_project_setup()
 
-# Qt 6.8's FindWrapOpenGL still links the AGL framework, which the macOS 26 SDK no longer
-# ships ("ld: framework 'AGL' not found"). Nothing here uses it, so drop it.
+# Qt 6.8 still links AGL, which the macOS 26 SDK no longer has.
 if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
     get_target_property(wrap_opengl_libs WrapOpenGL::WrapOpenGL INTERFACE_LINK_LIBRARIES)
     if(wrap_opengl_libs)
@@ -38,16 +33,13 @@ if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
     endif()
 endif()
 
-# Sources by layer (see README): includes are written relative to src/,
-# e.g. #include "spotify/SpotifyClient.h".
 qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/main.cpp
-    # app: settings, theme, language, shared data types
     src/app/AppSettings.cpp src/app/AppSettings.h
     src/app/Localization.cpp src/app/Localization.h
     src/app/MediaState.h
-    # ui: the edge panel, its views, dialogs and the tray icon
     src/ui/EdgePanel.cpp src/ui/EdgePanel.h
+    src/ui/ErrorToasts.cpp src/ui/ErrorToasts.h
     src/ui/PanelContent.cpp src/ui/PanelContent.h
     src/ui/PanelLayout.h
     src/ui/PlaylistScrubPopup.cpp src/ui/PlaylistScrubPopup.h
@@ -62,18 +54,13 @@ qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/ui/library/LibraryView.cpp src/ui/library/LibraryView.h
     src/ui/library/LibraryStyle.cpp src/ui/library/LibraryStyle.h
     src/ui/library/TrackListPopup.cpp src/ui/library/TrackListPopup.h
-    # playback: what plays and how to control it
     src/playback/MediaController.cpp src/playback/MediaController.h
-    # device: the MediaSpin record player
     src/device/MediaSpinProtocol.cpp src/device/MediaSpinProtocol.h
     src/device/BleLink.cpp src/device/BleLink.h
-    src/device/DeviceLink.cpp src/device/DeviceLink.h
     src/device/DeviceController.cpp src/device/DeviceController.h
-    # spotify: Web API, login, launching the app
     src/spotify/SpotifyAuth.cpp src/spotify/SpotifyAuth.h
     src/spotify/SpotifyClient.cpp src/spotify/SpotifyClient.h
     src/spotify/SpotifyLauncher.cpp src/spotify/SpotifyLauncher.h
-    # platform: what differs between Windows, macOS and Linux (implementations below)
     src/platform/AppInit.h
     src/platform/AppVolume.h
     src/platform/Autostart.h
@@ -92,14 +79,10 @@ if(WIN32)
         src/platform/win/SpotifyApp.cpp
         src/platform/win/WinLocalPlayer.cpp
         src/platform/win/WindowLayer.cpp
-        # exe icon for Explorer and shortcuts (resources/EdgeWidget.ico)
         resources/EdgeWidget.rc
     )
-    # windowsapp: C++/WinRT media session API, crypt32: DPAPI for the Spotify token (both part of Windows).
     target_link_libraries(EdgeWidget PRIVATE windowsapp crypt32)
-    # winrt/base.h still probes <experimental/coroutine> in C++17 mode; newer MSVC STLs (e.g. the
-    # one shipped with VS 2026) turned its deprecation notice into a hard error. No coroutines are
-    # actually used here, so silencing it (as the compiler's own message suggests) is enough.
+    # winrt/base.h in C++17: newer MSVC made this deprecation an error
     target_compile_definitions(EdgeWidget PRIVATE _SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
 elseif(APPLE)
     target_sources(EdgeWidget PRIVATE
@@ -134,9 +117,8 @@ else()
         src/platform/linux/SpotifyApp.cpp
         src/platform/linux/WindowLayer.cpp
     )
-    set_target_properties(EdgeWidget PROPERTIES OUTPUT_NAME edgewidget) # Linux convention
+    set_target_properties(EdgeWidget PROPERTIES OUTPUT_NAME edgewidget)
     target_link_libraries(EdgeWidget PRIVATE Qt6::DBus)
-    # Secret Service (GNOME Keyring / KWallet) for the Spotify token; optional, see SecretStore.cpp.
     find_package(PkgConfig)
     if(PkgConfig_FOUND)
         pkg_check_modules(LIBSECRET IMPORTED_TARGET libsecret-1)
@@ -151,36 +133,28 @@ endif()
 
 target_link_libraries(EdgeWidget PRIVATE Qt6::Widgets Qt6::Network Qt6::Bluetooth)
 target_include_directories(EdgeWidget PRIVATE src)
-# Same folder tree in Visual Studio / Qt Creator / Xcode.
 get_target_property(edgewidget_sources EdgeWidget SOURCES)
 list(FILTER edgewidget_sources INCLUDE REGEX "^src/")
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX src FILES ${edgewidget_sources})
 
-# Renders resources/EdgeWidget.ico, .icns and edgewidget.png from the same drawing; only built by scripts\make-icon.ps1.
 add_executable(make_icon EXCLUDE_FROM_ALL tools/make_icon.cpp src/ui/VinylIcon.cpp src/ui/VinylIcon.h)
 target_include_directories(make_icon PRIVATE src)
 target_link_libraries(make_icon PRIVATE Qt6::Gui)
 
-# Ukrainian for Qt's own dialogs (colour picker, About Qt); the app's own strings are in the sources.
 set(qtbase_uk "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_TRANSLATIONS}/qtbase_uk.qm")
 
 if(WIN32)
-    # `cmake --install build --prefix dist` -> exe + Qt DLLs (dynamic linking, LGPL-friendly)
     install(TARGETS EdgeWidget RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES THIRD_PARTY_NOTICES.txt DESTINATION .)
     install(DIRECTORY licenses/ DESTINATION licenses OPTIONAL)
     install(FILES ${qtbase_uk} DESTINATION translations)
 
-    # MSVC runtime (vcruntime140.dll, msvcp140.dll, ...) next to the exe, so it runs on PCs
-    # without the Visual C++ Redistributable. App-local deployment is allowed by Microsoft.
     set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION .)
-    set(CMAKE_INSTALL_UCRT_LIBRARIES OFF) # the UCRT is part of Windows 10/11
+    set(CMAKE_INSTALL_UCRT_LIBRARIES OFF)
     include(InstallRequiredSystemLibraries)
 
-    # Widgets only: no software OpenGL (20 MB) or shader compiler.
     set(deploy_options DEPLOY_TOOL_OPTIONS --no-opengl-sw --no-system-d3d-compiler)
 elseif(APPLE)
-    # `cmake --install build --prefix dist` -> dist/EdgeWidget.app with Qt frameworks inside
     install(TARGETS EdgeWidget BUNDLE DESTINATION .)
     set(resources EdgeWidget.app/Contents/Resources)
     install(FILES THIRD_PARTY_NOTICES.txt DESTINATION ${resources})
@@ -188,8 +162,6 @@ elseif(APPLE)
     install(FILES ${qtbase_uk} DESTINATION ${resources}/translations)
     set(deploy_options "")
 else()
-    # Standard XDG layout under the prefix (/usr for packages, AppDir/usr for the AppImage).
-    # Qt itself comes from the system (packages) or linuxdeploy (AppImage): no deploy script.
     include(GNUInstallDirs)
     install(TARGETS EdgeWidget RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     install(FILES packaging/linux/edgewidget.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)

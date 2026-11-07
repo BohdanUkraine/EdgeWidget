@@ -7,7 +7,7 @@
 namespace {
 constexpr int kTimeoutMs = 5000;
 constexpr int kMaxAttempts = 3;
-} // namespace
+}
 
 QImage CoverFetcher::get(const QString &url)
 {

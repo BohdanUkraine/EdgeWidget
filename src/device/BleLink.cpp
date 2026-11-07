@@ -12,15 +12,15 @@
 namespace {
 const QString kDeviceName = QStringLiteral("MediaSpin");
 const QBluetoothUuid kService(QStringLiteral("6E400001-B5A3-F393-E0A9-E50E24DCCA9E"));
-const QBluetoothUuid kRx(QStringLiteral("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")); // PC -> device (write)
-const QBluetoothUuid kTx(QStringLiteral("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")); // device -> PC (notify)
+const QBluetoothUuid kRx(QStringLiteral("6E400002-B5A3-F393-E0A9-E50E24DCCA9E"));
+const QBluetoothUuid kTx(QStringLiteral("6E400003-B5A3-F393-E0A9-E50E24DCCA9E"));
 
 constexpr int kScanMs = 5000;
-constexpr int kRetryMs = 2000;       // after a lost connection / an empty scan
-constexpr int kNoAdapterMs = 10000;  // Bluetooth off or missing: check now and then, quietly
-constexpr int kAckMs = 600;          // no ACK this long: send the command again
+constexpr int kRetryMs = 2000;
+constexpr int kNoAdapterMs = 10000;
+constexpr int kAckMs = 600;
 constexpr int kMaxTries = 4;
-} // namespace
+}
 
 BleLink::BleLink(QObject *parent)
     : QObject(parent)
@@ -28,7 +28,6 @@ BleLink::BleLink(QObject *parent)
 {
     m_agent->setLowEnergyDiscoveryTimeout(kScanMs);
     connect(m_agent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this, &BleLink::onDeviceFound);
-    // The name comes in the scan response, often in a later update than the first sighting.
     connect(m_agent, &QBluetoothDeviceDiscoveryAgent::deviceUpdated, this,
             [this](const QBluetoothDeviceInfo &info, QBluetoothDeviceInfo::Fields) { onDeviceFound(info); });
     connect(m_agent, &QBluetoothDeviceDiscoveryAgent::finished, this, [this] {
@@ -110,7 +109,7 @@ void BleLink::connectTo(const QBluetoothDeviceInfo &info)
                             m_tries = 0;
                             sendHead();
                         }
-                        return; // transport only: nothing for the controller
+                        return;
                     }
                     qDebug().noquote() << "[device] <-" << MediaSpin::describe(*message);
                     emit messageReceived(*message);
@@ -119,13 +118,12 @@ void BleLink::connectTo(const QBluetoothDeviceInfo &info)
             if (m_ready || d.uuid() != QBluetoothUuid(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration))
                 return;
             m_ready = true;
-            m_nextSeq = 1; // the device starts a new session on connect too
+            m_nextSeq = 1;
             qDebug() << "[device] BLE: connected, MTU" << m_controller->mtu();
             emit connectedChanged(true);
         });
         connect(m_service, &QLowEnergyService::errorOccurred, this, [this](QLowEnergyService::ServiceError error) {
             qDebug() << "[device] BLE service error:" << error;
-            // a failed write is retried by the ACK timer like a lost ACK
             if (error != QLowEnergyService::CharacteristicWriteError && !m_ready)
                 drop(kRetryMs);
         });
@@ -158,7 +156,7 @@ void BleLink::send(const MediaSpin::Message &message)
     MediaSpin::Message numbered = message;
     numbered.seq = m_nextSeq++;
     if (!m_nextSeq)
-        m_nextSeq = 1; // 0 means "no number"
+        m_nextSeq = 1;
     m_queue.append(numbered);
     sendHead();
 }
@@ -169,7 +167,6 @@ void BleLink::sendHead()
         return;
     m_inFlight = true;
     m_tries++;
-    // BLE keeps message boundaries: no length prefix
     m_service->writeCharacteristic(m_rx, MediaSpin::encode(m_queue.first()), QLowEnergyService::WriteWithResponse);
     m_ackTimer.start();
 }
@@ -204,9 +201,9 @@ void BleLink::drop(int retryMs)
         m_service->disconnect(this);
     if (m_controller) {
         QLowEnergyController *controller = std::exchange(m_controller, nullptr);
-        controller->disconnect(this); // no disconnected() back into drop()
+        controller->disconnect(this);
         controller->disconnectFromDevice();
-        controller->deleteLater(); // takes the service with it
+        controller->deleteLater();
     }
     if (wasReady)
         emit connectedChanged(false);

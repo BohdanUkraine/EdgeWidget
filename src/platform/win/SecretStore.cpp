@@ -8,7 +8,6 @@
 #include <dpapi.h>
 
 namespace {
-// Windows DPAPI: only this Windows user can decrypt it.
 QByteArray dpapi(const QByteArray &data, bool encrypt)
 {
     DATA_BLOB in{ DWORD(data.size()), reinterpret_cast<BYTE *>(const_cast<char *>(data.data())) };
@@ -22,10 +21,9 @@ QByteArray dpapi(const QByteArray &data, bool encrypt)
     LocalFree(out.pbData);
     return result;
 }
-} // namespace
+}
 
 namespace SecretStore {
-
 QString load(const QString &key)
 {
     const QByteArray sealed = QByteArray::fromBase64(QSettings().value(key).toByteArray());
@@ -41,4 +39,4 @@ void save(const QString &key, const QString &value)
         s.setValue(key, dpapi(value.toUtf8(), true).toBase64());
 }
 
-} // namespace SecretStore
+}

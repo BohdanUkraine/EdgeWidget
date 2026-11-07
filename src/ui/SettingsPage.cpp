@@ -31,15 +31,13 @@
 #include <cmath>
 
 namespace {
-constexpr int kBorder = 2; // keep the panel's own top / bottom border visible
+constexpr int kBorder = 2;
 
 const QList<QColor> kSwatches = {
     QColor("#1ED760"), QColor("#3D9BFF"), QColor("#A970FF"), QColor("#F48FB1"),
     QColor("#FF9F43"), QColor("#FF5C5C"), QColor("#FFD43B"), QColor("#BDBDBD"),
 };
 
-// Stylesheets can only draw images, so the combo box arrow and the check mark are tiny PNGs
-// in the cache dir (drawn at 2x for HiDPI).
 QString strokeImage(const char *name, const QSize &size, const QPolygonF &line, const QColor &color)
 {
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
@@ -82,7 +80,7 @@ QPushButton *button(const QString &text)
     b->setCursor(Qt::PointingHandCursor);
     return b;
 }
-} // namespace
+}
 
 SettingsPage::SettingsPage(SpotifyClient *spotify, DeviceController *device, QWidget *parent)
     : QWidget(parent)
@@ -94,15 +92,14 @@ SettingsPage::SettingsPage(SpotifyClient *spotify, DeviceController *device, QWi
     connect(&AppSettings::instance(), &AppSettings::changed, this, &SettingsPage::syncFromSettings);
     connect(m_spotify, &SpotifyClient::connectedChanged, this, &SettingsPage::syncAccount);
     connect(m_spotify, &SpotifyClient::libraryChanged, this, &SettingsPage::syncAccount);
-    // Queued: the language list itself gets rebuilt, never delete it inside its own signal.
     connect(&Localization::instance(), &Localization::languageChanged, this, &SettingsPage::buildUi,
-            Qt::QueuedConnection);
+            Qt::QueuedConnection); // the rebuild deletes the combo box that emitted it
     buildUi();
 }
 
 void SettingsPage::buildUi()
 {
-    const QObjectList old = children(); // rebuilt from scratch on language change
+    const QObjectList old = children();
     for (QObject *o : old)
         delete o;
     m_swatches.clear();
@@ -150,8 +147,6 @@ void SettingsPage::buildUi()
     syncPlayer();
 }
 
-// ---------------------------------------------------------------- sections
-
 void SettingsPage::addSizeSection(QGridLayout *grid, int &row)
 {
     AppSettings &s = AppSettings::instance();
@@ -190,7 +185,7 @@ void SettingsPage::addPositionSection(QGridLayout *grid, int &row)
     m_layer = new QComboBox;
     m_layer->setCursor(Qt::PointingHandCursor);
     m_layer->installEventFilter(this);
-    m_layer->addItems({ tr("Під вікнами"), tr("Поверх вікон"), tr("Поверх усього") }); // AppSettings::Layer order
+    m_layer->addItems({ tr("Під вікнами"), tr("Поверх вікон"), tr("Поверх усього") });
     connect(m_layer, &QComboBox::activated, this, [](int index) {
         AppSettings::instance().setLayer(AppSettings::Layer(index));
     });
@@ -207,7 +202,7 @@ void SettingsPage::addPositionSection(QGridLayout *grid, int &row)
     m_autostart = new QCheckBox(tr("Запускати при вході в систему"));
 #endif
     m_autostart->setCursor(Qt::PointingHandCursor);
-    m_autostart->setChecked(Autostart::isEnabled()); // the registry is the source of truth
+    m_autostart->setChecked(Autostart::isEnabled());
     connect(m_autostart, &QCheckBox::toggled, this, [](bool on) { Autostart::setEnabled(on); });
     grid->addWidget(m_autostart, row++, 0, 1, 3);
 }
@@ -247,10 +242,9 @@ void SettingsPage::addLookSection(QGridLayout *grid, int &row)
     grid->addWidget(label(tr("Колір рамки")), row, 0);
     grid->addLayout(swatchRow, row++, 1, 1, 2);
 
-    // A list, so a new language only needs a dictionary in Localization.cpp.
     m_language = new QComboBox;
     m_language->setCursor(Qt::PointingHandCursor);
-    m_language->installEventFilter(this); // the wheel scrolls the page, not the language
+    m_language->installEventFilter(this);
     m_language->addItem(tr("Авто"), QStringLiteral("auto"));
     for (const auto &[code, name] : Localization::languages())
         m_language->addItem(name, code);
@@ -280,7 +274,6 @@ void SettingsPage::addAccountSection(QGridLayout *grid, int &row)
         accountRow->addWidget(b);
     accountRow->addStretch();
     grid->addLayout(accountRow, row++, 0, 1, 3);
-    // Dialog owned by the panel: the panel stays open while it is up.
     connect(m_login, &QPushButton::clicked, this, [this] { runSpotifySetup(m_spotify, window()); });
     connect(m_reload, &QPushButton::clicked, m_spotify, &SpotifyClient::refreshLibrary);
     connect(m_logout, &QPushButton::clicked, m_spotify, &SpotifyClient::logout);
@@ -317,7 +310,6 @@ void SettingsPage::addPlayerSection(QGridLayout *grid, int &row)
 void SettingsPage::addAboutSection(QGridLayout *grid, int &row)
 {
     grid->addWidget(label(tr("Про програму"), "section"), row++, 0, 1, 3);
-    // Required by the LGPL: tell users the app uses Qt and under which licence.
     auto *aboutQt = button(tr("Про Qt…"));
     connect(aboutQt, &QPushButton::clicked, this, [this] { QMessageBox::aboutQt(window()); });
     grid->addWidget(aboutQt, row++, 0, 1, 2, Qt::AlignLeft);
@@ -327,8 +319,6 @@ void SettingsPage::addAboutSection(QGridLayout *grid, int &row)
     grid->addWidget(reset, row++, 0, 1, 2, Qt::AlignLeft);
 }
 
-// ---------------------------------------------------------------- row helpers
-
 QSlider *SettingsPage::addSlider(QGridLayout *grid, int &row, const QString &title, int min, int max, int step,
                                  const QString &unit, std::function<void(int)> apply)
 {
@@ -337,12 +327,11 @@ QSlider *SettingsPage::addSlider(QGridLayout *grid, int &row, const QString &tit
     slider->setSingleStep(step);
     slider->setPageStep(step * 4);
     slider->setCursor(Qt::PointingHandCursor);
-    slider->installEventFilter(this); // the wheel scrolls the page, not the value
+    slider->installEventFilter(this);
     auto *value = label({}, "value");
     value->setMinimumWidth(44);
     value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     connect(slider, &QSlider::valueChanged, this, [this, slider, value, unit, step, apply](int v) {
-        // Snap to the step so values stay round while dragging (re-enters with the snapped value).
         const int snapped = int(std::lround(double(v) / step)) * step;
         if (snapped != v) {
             slider->setValue(snapped);
@@ -358,7 +347,6 @@ QSlider *SettingsPage::addSlider(QGridLayout *grid, int &row, const QString &tit
     return slider;
 }
 
-// Exclusive toggle buttons in one row (e.g. Left / Right).
 QList<QPushButton *> SettingsPage::addChoice(QGridLayout *grid, int &row, const QString &title,
                                              const QStringList &options)
 {
@@ -384,8 +372,6 @@ void SettingsPage::addHint(QGridLayout *grid, int &row, const QString &text)
     hint->setWordWrap(true);
     grid->addWidget(hint, row++, 0, 1, 3);
 }
-
-// ---------------------------------------------------------------- state
 
 void SettingsPage::syncFromSettings()
 {
@@ -432,7 +418,7 @@ void SettingsPage::syncAccount()
 void SettingsPage::syncPlayer()
 {
     if (!m_device->isConnected())
-        m_playerStatus->setText(tr("Не підключено. Шукаю програвач (емулятор на цьому ПК)…"));
+        m_playerStatus->setText(tr("Не підключено. Шукаю програвач…"));
     else if (m_device->hasRecord())
         m_playerStatus->setText(tr("Підключено. На рідері платівка %1").arg(m_device->recordColor().name().toUpper()));
     else
@@ -441,15 +427,13 @@ void SettingsPage::syncPlayer()
 
 void SettingsPage::pickCustomColor()
 {
-    // Parented to the panel window, so the panel does not hide while the dialog is open.
     const QColor c = QColorDialog::getColor(AppSettings::instance().accent(), window(), tr("Колір рамки"));
     if (c.isValid())
         AppSettings::instance().setAccent(c);
     else
-        syncFromSettings(); // restore the checked state
+        syncFromSettings();
 }
 
-// The stylesheet depends on the theme only; rebuilt when the theme or accent changes.
 void SettingsPage::applyStyle()
 {
     const Theme t = Theme::current();
@@ -508,7 +492,6 @@ void SettingsPage::applyStyle()
 
 bool SettingsPage::eventFilter(QObject *watched, QEvent *event)
 {
-    // Scrolling the page over a slider / list must not change the setting under the cursor.
     const bool control = qobject_cast<QSlider *>(watched) || qobject_cast<QComboBox *>(watched);
     if (event->type() == QEvent::Wheel && control && m_scrollArea) {
         QCoreApplication::sendEvent(m_scrollArea->verticalScrollBar(), event);
@@ -519,7 +502,6 @@ bool SettingsPage::eventFilter(QObject *watched, QEvent *event)
 
 void SettingsPage::paintEvent(QPaintEvent *)
 {
-    // Opaque over the player, but leaves the panel's top / bottom border visible.
     QPainter p(this);
     p.fillRect(rect().adjusted(0, kBorder, 0, -kBorder), Theme::current().bg);
 }

@@ -2,6 +2,8 @@
 
 #include "app/AppSettings.h"
 #include "device/DeviceController.h"
+#include "spotify/SpotifyLauncher.h"
+#include "ui/ErrorToasts.h"
 #include "ui/library/LibraryView.h"
 #include "playback/MediaController.h"
 #include "ui/PanelLayout.h"
@@ -23,7 +25,7 @@ using namespace PanelLayout;
 
 namespace {
 constexpr int kSettingsAnimMs = 260;
-} // namespace
+}
 
 PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, DeviceController *device, QWidget *parent)
     : QWidget(parent)
@@ -36,10 +38,14 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     , m_tabs(new TabStrip(this))
     , m_settingsHost(new QWidget(this))
     , m_settings(new SettingsPage(spotify, device, m_settingsHost))
+    , m_errors(new ErrorToasts(this))
 {
     setAttribute(Qt::WA_TranslucentBackground);
 
-    // Settings page: slides in from the right, like a phone settings screen.
+    connect(spotify, &SpotifyClient::error, m_errors, &ErrorToasts::showError);
+    connect(&SpotifyLauncher::instance(), &SpotifyLauncher::failed, m_errors, &ErrorToasts::showError);
+    connect(device, &DeviceController::deviceError, m_errors, &ErrorToasts::showError);
+
     m_settingsHost->hide();
     m_settingsAnim.setDuration(kSettingsAnimMs);
     m_settingsAnim.setEasingCurve(QEasingCurve::OutCubic);
@@ -62,17 +68,11 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     m_player->setRecordColor(device->recordColor());
     connect(device, &DeviceController::recordColorChanged, m_player, &PlayerView::setRecordColor);
 
-    // Playlist fader mode, while the device fader is being dragged: live preview, not a commitment
-    // yet. If the playlist it's scrubbing is already open in the track list, scroll that instead
-    // of covering it with a second popup.
     connect(device, &DeviceController::playlistScrubMoved, this, [this](const QList<Track> &tracks, int index) {
         if (!m_tracks->openUri().isEmpty() && m_tracks->openUri() == m_spotify->activeUri())
             m_tracks->previewIndex(index);
         else
             m_scrubPopup->showPreview(tracks, index);
-        // Show it as the current track right away everywhere — title, cover, duration — not
-        // only in these two track-list previews; DeviceController decides when (or whether,
-        // while paused) it actually switches.
         if (index >= 0 && index < tracks.size()) {
             const Track &t = tracks.at(index);
             m_player->setPreview(t.name, t.artists, t.imageUrl, t.durationMs);
@@ -82,7 +82,6 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     auto *volumeOverlay = new VolumeOverlay(parent ? parent->window() : nullptr);
     connect(device, &DeviceController::spotifyVolumeChanged, volumeOverlay, &VolumeOverlay::showLevel);
 
-    // Library list <-> track list card.
     connect(m_library, &LibraryView::togglePlayRequested, media, &MediaController::togglePlayPause);
     connect(m_library, &LibraryView::detailOpened, this, [this](const LibraryItem &item, int rowTop) {
         updatePopupAnchor();
@@ -92,7 +91,6 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     connect(m_tracks, &TrackListPopup::closeRequested, m_library, [this] { m_library->closeDetail(); });
     connect(m_tracks, &TrackListPopup::togglePlayRequested, media, &MediaController::togglePlayPause);
 
-    // NFC button: writes this album / playlist to the record lying on the player.
     auto writeRecord = [device](const LibraryItem &item) {
         if (!device->isConnected())
             QToolTip::showText(QCursor::pos(), tr("Програвач не підключено"));
@@ -107,11 +105,10 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     connect(media, &MediaController::stateChanged, this, [this](const MediaState &state) {
         m_library->setPlaying(state.available && state.playing);
         m_tracks->setNowPlaying(state.available ? state.title : QString(), state.available && state.playing);
-        // New track: ask Spotify which playlist / album it belongs to, to highlight it.
         if (state.trackKey() != m_trackKey) {
             m_trackKey = state.trackKey();
             if (state.available && !state.title.isEmpty())
-                QTimer::singleShot(700, m_spotify, &SpotifyClient::updateNowPlaying);
+                QTimer::singleShot(700, m_spotify, [this, title = state.title] { m_spotify->updateNowPlaying(title); });
         }
     });
 }
@@ -130,6 +127,8 @@ void PanelContent::layoutChildren()
     m_player->setGeometry(scaled(0, 0, kWidth - kTabsW, kHeight));
     m_library->setGeometry(scaled(kRightX, kLibraryTop, kRightEnd - kRightX, kLibraryH));
     m_tabs->setGeometry(scaled(kWidth - kTabsW, 0, kTabsW, kHeight));
+    const QRect errors = scaled(kErrorsInset, kErrorsTop, kWidth - kTabsW - 2 * kErrorsInset, 0);
+    m_errors->setAnchor(errors.topLeft(), errors.width());
 
     const int pageW = m_player->width();
     m_settingsHost->setGeometry(0, 0, pageW, height());
@@ -138,7 +137,6 @@ void PanelContent::layoutChildren()
         m_settings->move(m_settingsOpen ? 0 : pageW, 0);
 }
 
-// The opened album covers the library column and grows out of the panel's edge.
 void PanelContent::updatePopupAnchor()
 {
     const QRect column(m_library->mapToGlobal(QPoint(0, 0)), m_library->size());
@@ -149,18 +147,19 @@ void PanelContent::updatePopupAnchor()
 
 void PanelContent::closeTrackList(bool fadeHeader)
 {
-    m_library->closeDetail(fadeHeader); // also closes the card
+    m_library->closeDetail(fadeHeader);
 }
 
 void PanelContent::openSettings()
 {
-    closeTrackList(true); // the album title fades with the card instead of flying back under the page
+    closeTrackList(true);
     m_settingsOpen = true;
     m_tabs->setCurrent(TabStrip::Settings);
     layoutChildren();
     m_settings->move(m_settingsHost->width(), 0);
     m_settingsHost->show();
     m_settingsHost->raise();
+    m_errors->raise();
     m_settingsAnim.stop();
     m_settingsAnim.setStartValue(0.0);
     m_settingsAnim.setEndValue(1.0);

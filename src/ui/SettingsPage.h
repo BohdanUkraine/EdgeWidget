@@ -14,9 +14,6 @@ class QSlider;
 class DeviceController;
 class SpotifyClient;
 
-// Settings screen that slides over the player inside the panel. Every control writes to
-// AppSettings right away, so the panel, the handle and the track card update live.
-// The page is rebuilt when the UI language changes.
 class SettingsPage : public QWidget
 {
     Q_OBJECT
@@ -40,7 +37,6 @@ private:
     void addPlayerSection(QGridLayout *grid, int &row);
     void addAboutSection(QGridLayout *grid, int &row);
 
-    // Row helpers; apply() receives the (step-snapped) value when the user changes it.
     QSlider *addSlider(QGridLayout *grid, int &row, const QString &title, int min, int max, int step,
                        const QString &unit, std::function<void(int)> apply);
     QList<QPushButton *> addChoice(QGridLayout *grid, int &row, const QString &title, const QStringList &options);
@@ -69,8 +65,8 @@ private:
     QPushButton *m_light = nullptr;
     QList<QPushButton *> m_swatches;
     QPushButton *m_customColor = nullptr;
-    QComboBox *m_language = nullptr; // item data: "auto" or a language code
-    QComboBox *m_layer = nullptr;    // index = AppSettings::Layer
+    QComboBox *m_language = nullptr;
+    QComboBox *m_layer = nullptr;
     QCheckBox *m_autostart = nullptr;
 
     QLabel *m_accountStatus = nullptr;
@@ -83,6 +79,6 @@ private:
     QPushButton *m_volumeSystem = nullptr;
     QPushButton *m_volumeSpotify = nullptr;
 
-    bool m_syncing = false; // true while controls are set from AppSettings (no write-back)
-    QString m_styleKey;     // theme + accent the stylesheet was built for
+    bool m_syncing = false;
+    QString m_styleKey;
 };

@@ -7,7 +7,6 @@
 #include <QStandardPaths>
 
 namespace {
-// XDG autostart: every desktop (GNOME, KDE, XFCE, ...) runs these at login.
 QString desktopFile()
 {
     return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/autostart/edgewidget.desktop");
@@ -15,7 +14,6 @@ QString desktopFile()
 
 QByteArray entry()
 {
-    // An AppImage runs from a temporary mount: start the .AppImage file itself.
     const QString appImage = qEnvironmentVariable("APPIMAGE");
     const QString exe = appImage.isEmpty() ? QCoreApplication::applicationFilePath() : appImage;
     return QStringLiteral(
@@ -28,10 +26,9 @@ QByteArray entry()
         .arg(exe)
         .toUtf8();
 }
-} // namespace
+}
 
 namespace Autostart {
-
 bool isEnabled()
 {
     return QFile::exists(desktopFile());
@@ -58,4 +55,4 @@ void refresh()
     }
 }
 
-} // namespace Autostart
+}

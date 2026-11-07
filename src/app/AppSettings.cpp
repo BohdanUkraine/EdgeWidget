@@ -10,9 +10,9 @@ constexpr int kDefaultHandleWidth = 24;
 constexpr int kDefaultHandleHeight = 200;
 constexpr int kDefaultCardHeight = 200;
 constexpr int kDefaultScrubPopupHeight = 52;
-constexpr qreal kDefaultPosition = 1.0; // bottom
+constexpr qreal kDefaultPosition = 1.0;
 const QColor kDefaultAccent(30, 215, 96);
-} // namespace
+}
 
 AppSettings &AppSettings::instance()
 {

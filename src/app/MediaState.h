@@ -6,22 +6,20 @@
 #include <algorithm>
 #include <chrono>
 
-// What is playing right now, from the local player (Windows media session) or from the
-// Spotify Web API when the music plays on another device.
 struct MediaState
 {
-    bool available = false; // there is something to show / control
+    bool available = false;
     QString title;
     QString artist;
     QString album;
     QImage cover;
     bool playing = false;
     bool shuffle = false;
-    int repeat = 0; // 0 = off, 1 = track, 2 = list
+    int repeat = 0;
     qint64 positionMs = 0;
     qint64 durationMs = 0;
-    qint64 sampledAtMs = 0; // steady clock time when positionMs was valid
-    bool remote = false;    // playing on another device, controlled through the Web API
+    qint64 sampledAtMs = 0;
+    bool remote = false;
     QString deviceName;
 
     static qint64 nowMs()
@@ -30,7 +28,6 @@ struct MediaState
         return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
     }
 
-    // Position extrapolated to "now" while playing.
     qint64 positionNow() const
     {
         const qint64 pos = positionMs + (playing ? nowMs() - sampledAtMs : 0);

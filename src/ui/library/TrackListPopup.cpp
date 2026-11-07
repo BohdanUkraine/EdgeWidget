@@ -12,17 +12,13 @@
 using namespace LibraryStyle;
 
 namespace {
-constexpr int kInset = 10; // card is this much wider than the library column on each side
+constexpr int kInset = 10;
 constexpr int kPad = 8;
 constexpr int kRadius = 14;
 constexpr int kBorder = 2;
 constexpr int kAnimMs = 260;
-// Faster than kAnimMs, and shared by the scroll offset and the box position (see m_scrollAnim /
-// m_boxAnim): previewIndex() can be re-triggered every ~120 ms while the device fader is
-// scrubbing, and a 260 ms ease barely gets going before the next call restarts it — this settles
-// quickly enough to actually keep up and read as responsive instead of laggy.
 constexpr int kPreviewAnimMs = 110;
-} // namespace
+}
 
 TrackListPopup::TrackListPopup(SpotifyClient *spotify, CoverCache *covers, QWidget *owner)
     : ScaledWidget(owner, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::WindowDoesNotAcceptFocus)
@@ -67,21 +63,16 @@ TrackListPopup::TrackListPopup(SpotifyClient *spotify, CoverCache *covers, QWidg
     });
 }
 
-// ---------------------------------------------------------------- geometry
-
 qreal TrackListPopup::edgeY() const
 {
     return m_down ? (m_panelBottom - m_column.top()) / uiScale() : AppSettings::instance().cardHeight();
 }
 
-// The header starts exactly where the clicked row was and moves to the top of the column
-// (top of the card when it opens upwards).
 QRect TrackListPopup::headerRect() const
 {
     const qreal columnTop = m_down ? 0.0 : edgeY() + (m_column.top() - m_panelTop) / uiScale();
     const qreal start = columnTop + m_rowOffset;
     const qreal end = m_down ? 0.0 : kPad;
-    // Fading out (settings opened): stay at the top instead of travelling back.
     const qreal y = m_fadeHeader ? end : start + (end - start) * m_t;
     return QRect(kInset, int(std::lround(y)), int(lw()) - 2 * kInset, kRowH);
 }
@@ -138,8 +129,6 @@ TrackListPopup::Hover TrackListPopup::hitTest(const QPoint &pos) const
     return h;
 }
 
-// ---------------------------------------------------------------- open / close
-
 void TrackListPopup::open(const LibraryItem &item, int rowTop)
 {
     m_item = item;
@@ -163,7 +152,6 @@ void TrackListPopup::open(const LibraryItem &item, int rowTop)
     });
 
     if (!m_open) {
-        // Not enough room above the panel? Open downwards instead.
         QScreen *screen = QGuiApplication::screenAt(QPoint(m_column.left(), m_panelTop));
         if (!screen)
             screen = QGuiApplication::primaryScreen();
@@ -205,7 +193,6 @@ void TrackListPopup::setNowPlaying(const QString &title, bool playing)
         return;
     m_nowTitle = title;
     m_playing = playing;
-    // The API caught up with a pinned pick (or there was never one): safe to follow it again.
     if (m_previewPinned && m_previewIndex >= 0 && m_previewIndex < m_tracks.size()
         && m_tracks.at(m_previewIndex).name == title)
         m_previewPinned = false;
@@ -225,8 +212,6 @@ void TrackListPopup::syncPreviewFromNowTitle()
             }
         }
     }
-    // Passive sync (the real track changed by some other means): just box wherever that row
-    // already sits — unlike previewIndex() below, this never scrolls the list on its own.
     if (m_previewIndex < 0)
         m_boxPositioned = false;
     else
@@ -250,9 +235,6 @@ void TrackListPopup::animateBoxTo(qreal target)
     m_boxAnim.start();
 }
 
-// Called every ~120 ms while the device fader scrubs: pins the box to this track right away,
-// independent of whatever Spotify's API confirms (or never confirms, while paused) — see
-// DeviceController::playlistScrub().
 void TrackListPopup::previewIndex(int index)
 {
     if (!m_open || index < 0 || index >= int(m_tracks.size()))
@@ -264,11 +246,6 @@ void TrackListPopup::previewIndex(int index)
     }
     const int raw = index * kTrackH - (tracksRect().height() - kTrackH) / 2;
     const int target = std::clamp(raw, 0, maxScroll());
-    // Enough tracks above and below to actually reach the centre: the box can stay put there
-    // and let the list scroll under it. Too close to either end of the playlist, and it just
-    // settles wherever that row lands instead (same as scrolling any list to its start / end) —
-    // either way animateBoxTo() eases it there, so picking through several tracks in a row
-    // (even ones that can't be centred) glides instead of jumping row to row.
     const bool centered = (target == raw);
     if (target != m_scroll.offset) {
         m_scrollAnim.stop();
@@ -278,8 +255,6 @@ void TrackListPopup::previewIndex(int index)
     }
     animateBoxTo(centered ? (tracksRect().height() - kTrackH) / 2.0 : qreal(index * kTrackH - target));
 }
-
-// ---------------------------------------------------------------- painting
 
 void TrackListPopup::paintEvent(QPaintEvent *)
 {
@@ -293,12 +268,10 @@ void TrackListPopup::paintEvent(QPaintEvent *)
     const qreal edge = edgeY();
     const qreal card = AppSettings::instance().cardHeight();
 
-    // The part outside the panel is rounded on its outer side and covers the panel's border,
-    // so card and panel become one shape. The part over the library column fades in.
-    QRectF outer;     // rounded rect of the outer part
-    QRectF outerKeep; // what of it stays visible
+    QRectF outer;
+    QRectF outerKeep;
     QRectF inside;
-    QRectF content;   // everything is clipped to the visible shape
+    QRectF content;
     if (m_down) {
         const qreal bottom = edge + card * m_t;
         outer = QRectF(half, edge - kBorder - kRadius, W - kBorder, bottom - (edge - kBorder - kRadius) - half);
@@ -339,7 +312,6 @@ void TrackListPopup::paintEvent(QPaintEvent *)
     paintRow(p, font(), headerRect(), m_item, m_covers->get(m_item.imageUrl), header);
     p.restore();
 
-    // Border last, on top of everything: the outer part's sides and rounded end.
     if (outerVisible) {
         p.setClipRect(m_down ? QRectF(0, edge - half, W, H) : QRectF(0, 0, W, edge + half));
         p.setPen(QPen(theme.accent, kBorder));
@@ -350,7 +322,6 @@ void TrackListPopup::paintEvent(QPaintEvent *)
 
 void TrackListPopup::paintTracks(QPainter &p, const QRect &list)
 {
-    // Tracks fade and slide in after the library rows have faded out.
     p.save();
     p.setOpacity(std::clamp((m_t - 0.4) / 0.6, 0.0, 1.0));
     p.setClipRect(list, Qt::IntersectClip);
@@ -375,10 +346,8 @@ void TrackListPopup::paintTracks(QPainter &p, const QRect &list)
             const bool current = active && i == m_previewIndex;
             const QImage cover = m_covers->get(t.imageUrl.isEmpty() ? m_item.imageUrl : t.imageUrl);
             paintTrack(p, font(), row, cover, t, m_hover.track == i && !m_scroll.dragged, current, m_playing,
-                       /*drawBorder=*/!showBox);
+                       !showBox);
         }
-        // A single overlay eased independently of any one row (see animateBoxTo()): it glides
-        // between positions smoothly, instead of a per-row border snapping row to row.
         if (showBox) {
             const QRect box(list.left(), list.top() + int(std::lround(m_boxY)), list.width(), kTrackH);
             p.setPen(QPen(th().accent, 2));
@@ -397,8 +366,6 @@ void TrackListPopup::paintTracks(QPainter &p, const QRect &list)
     p.setPen(th().line);
     p.drawLine(QPointF(list.left() + 4, list.top() - 3.5), QPointF(list.right() - 4, list.top() - 3.5));
 }
-
-// ---------------------------------------------------------------- input
 
 void TrackListPopup::wheelEvent(QWheelEvent *event)
 {
@@ -454,7 +421,7 @@ void TrackListPopup::mouseReleaseEvent(QMouseEvent *event)
             m_previewIndex = hit.track;
             update();
         }
-        animateBoxTo(hit.track * kTrackH - m_scroll.offset); // already visible: just box it, don't scroll
+        animateBoxTo(hit.track * kTrackH - m_scroll.offset);
         return;
     }
     switch (hit.part) {

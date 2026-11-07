@@ -21,24 +21,23 @@
 namespace {
 constexpr int kRadius = 16;
 constexpr int kBorder = 2;
-constexpr int kScreenMargin = 12; // keeps the panel off the very top / bottom edge
+constexpr int kScreenMargin = 12;
 constexpr int kDragThreshold = 6;
 constexpr int kAnimMs = 260;
-} // namespace
+}
 
 EdgePanel::EdgePanel(MediaController *media, SpotifyClient *spotify, DeviceController *device, QWidget *parent)
-    : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint) // topmost or not: WindowLayer
+    : QWidget(parent, Qt::Tool | Qt::FramelessWindowHint)
     , m_media(media)
     , m_anim(this, "reveal")
 {
     setAttribute(Qt::WA_TranslucentBackground);
-    setAttribute(Qt::WA_MacAlwaysShowToolWindow); // macOS hides tool windows of inactive apps
+    setAttribute(Qt::WA_MacAlwaysShowToolWindow);
     setFocusPolicy(Qt::StrongFocus);
     setWindowTitle(QStringLiteral("Edge Widget"));
 
     m_content = new PanelContent(media, spotify, device, this);
     m_content->hide();
-    // App-wide, so a focused button or check box in the settings doesn't take the Space.
     qApp->installEventFilter(this);
 
     m_anim.setDuration(kAnimMs);
@@ -51,8 +50,6 @@ EdgePanel::EdgePanel(MediaController *media, SpotifyClient *spotify, DeviceContr
 
     applyGeometry();
 }
-
-// ---------------------------------------------------------------- geometry
 
 QRect EdgePanel::availableArea() const
 {
@@ -74,15 +71,10 @@ QSize EdgePanel::panelSize() const
 int EdgePanel::handleHeight() const
 {
     if (!AppSettings::instance().handleVisible())
-        return 0; // collapses to nothing: see applyGeometry()
+        return 0;
     return std::clamp(AppSettings::instance().handleHeight(), 40, panelSize().height());
 }
 
-// Collapsed (m_reveal 0), "show the tab" alone decides whether anything is on screen. Expanded,
-// the handle stays alongside the content either way (so there is still something to grab to
-// close it) — unlike handleHeight() above, width doesn't cancel out of applyGeometry()'s own
-// formula on its own, so without this blend, toggling the setting while already open would
-// jump the window's width in one step instead of only ever changing it through the slide.
 int EdgePanel::handleWidth() const
 {
     const int w = AppSettings::instance().handleWidth();
@@ -97,7 +89,6 @@ QRect EdgePanel::handleRect() const
     return QRect(x, 0, w, height());
 }
 
-// Panel centre for a position between 0 (top of the screen) and 1 (bottom).
 qreal EdgePanel::centerY(qreal position) const
 {
     const QRect area = availableArea();
@@ -125,9 +116,6 @@ void EdgePanel::setReveal(qreal value)
     applyGeometry();
 }
 
-// The window stays anchored to the screen edge, so nothing ever leaks onto a neighbouring
-// monitor. Collapsed it is just the handle; while sliding out it grows to the panel size
-// around the same vertical centre.
 void EdgePanel::applyGeometry()
 {
     const QRect area = availableArea();
@@ -142,15 +130,12 @@ void EdgePanel::applyGeometry()
     const int y = int(std::lround(centerY(position) - h / 2.0));
     setGeometry(x, y, w, h);
 
-    // Content is glued to the handle and gets clipped by the window (= screen) edge.
     m_content->setFixedSize(panel);
     m_content->move(rightSide() ? handleW : visible - panel.width(), (h - panel.height()) / 2);
     m_content->setVisible(visible > 0);
-    m_content->updatePopupAnchor(); // the track list card rides along
+    m_content->updatePopupAnchor();
     update();
 }
-
-// ---------------------------------------------------------------- open / close
 
 void EdgePanel::animateTo(bool expanded)
 {
@@ -184,8 +169,6 @@ void EdgePanel::toggle()
         expand();
 }
 
-// ---------------------------------------------------------------- painting
-
 void EdgePanel::paintEvent(QPaintEvent *)
 {
     QPainter p(this);
@@ -198,7 +181,6 @@ void EdgePanel::paintEvent(QPaintEvent *)
     const qreal radius = std::min<qreal>(kRadius, height() / 2.0);
     const QPen pen(theme.accent, kBorder, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
 
-    // One rounded rectangle; its outer side runs past the window (= screen) edge.
     const QRectF frame = right
         ? QRectF(half, half, width() + radius, height() - kBorder)
         : QRectF(-radius, half, width() + radius - half, height() - kBorder);
@@ -206,14 +188,11 @@ void EdgePanel::paintEvent(QPaintEvent *)
     p.setBrush(theme.bg);
     p.drawRoundedRect(frame, radius, radius);
 
-    // Divider between the handle and the panel body.
     if (m_reveal > 0.0) {
         const qreal dx = right ? hr.right() + 1 - half : hr.left() + half;
         p.drawLine(QPointF(dx, half), QPointF(dx, height() - half));
     }
 
-    // Minimal chevron, sized with the handle. It flips horizontally while the panel
-    // slides: points "out" of the edge when collapsed, back "in" when expanded.
     QPainterPath arrow;
     arrow.moveTo(-3, -7);
     arrow.lineTo(3, 0);
@@ -225,14 +204,12 @@ void EdgePanel::paintEvent(QPaintEvent *)
     p.translate(QRectF(hr).center());
     p.scale(size * (std::abs(dir) < 0.05 ? (dir < 0 ? -0.05 : 0.05) : dir), size);
     QPen arrowPen = pen;
-    arrowPen.setCosmetic(true); // keep the stroke width constant while flipping
+    arrowPen.setCosmetic(true);
     p.setPen(arrowPen);
     p.setBrush(Qt::NoBrush);
     p.drawPath(arrow);
     p.restore();
 }
-
-// ---------------------------------------------------------------- input
 
 void EdgePanel::mousePressEvent(QMouseEvent *event)
 {
@@ -260,10 +237,8 @@ void EdgePanel::mouseMoveEvent(QMouseEvent *event)
     }
 
     if (m_drag == Drag::Horizontal) {
-        // Swipe: the panel follows the cursor.
         setReveal(m_pressReveal + qreal(inwardDx(d.x())) / panelSize().width());
     } else {
-        // Vertical drag moves the panel along the edge (saved on release).
         m_dragPosition = positionForCenter(m_pressCenter + d.y());
         applyGeometry();
     }
@@ -280,7 +255,6 @@ void EdgePanel::mouseReleaseEvent(QMouseEvent *event)
         break;
     case Drag::Horizontal: {
         const int dx = inwardDx((event->globalPosition().toPoint() - m_pressGlobal).x());
-        // Snap by direction of the swipe, with a small dead zone falling back to position.
         if (dx > 20)
             expand();
         else if (dx < -20)
@@ -323,7 +297,6 @@ bool EdgePanel::eventFilter(QObject *watched, QEvent *event)
     if (event->type() == QEvent::KeyPress && m_expanded) {
         auto *key = static_cast<QKeyEvent *>(event);
         auto *widget = qobject_cast<QWidget *>(watched);
-        // Typing (a text field) and open combo box lists keep their Space.
         if (key->key() == Qt::Key_Space && key->modifiers() == Qt::NoModifier && widget
             && widget->window() == this && !qobject_cast<QLineEdit *>(widget)
             && !qobject_cast<QAbstractSpinBox *>(widget)) {
@@ -337,8 +310,6 @@ bool EdgePanel::eventFilter(QObject *watched, QEvent *event)
 
 bool EdgePanel::event(QEvent *event)
 {
-    // Clicking anywhere outside the panel hides it, like on Android. Our own dialogs
-    // (e.g. the colour picker from the settings) do not count as "outside".
     if (event->type() == QEvent::WindowDeactivate && m_expanded && m_drag == Drag::None) {
         QTimer::singleShot(0, this, [this] {
             QWidget *active = QApplication::activeWindow();

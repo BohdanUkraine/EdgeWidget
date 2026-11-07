@@ -4,7 +4,6 @@
 
 #include <algorithm>
 
-// Black disc, a couple of grooves, green label, spindle hole and a light reflection.
 QImage vinylImage(int size)
 {
     QImage img(size, size, QImage::Format_ARGB32_Premultiplied);
@@ -18,7 +17,7 @@ QImage vinylImage(int size)
     p.setBrush(QColor(12, 12, 12));
     p.drawEllipse(c, r, r);
 
-    if (size >= 24) { // grooves only where they don't turn into mush
+    if (size >= 24) {
         p.setBrush(Qt::NoBrush);
         p.setPen(QPen(QColor(255, 255, 255, 45), size / 48.0));
         for (qreal k : { 0.82, 0.68 })

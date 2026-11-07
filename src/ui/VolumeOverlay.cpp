@@ -10,18 +10,18 @@
 #include <cmath>
 
 namespace {
-constexpr int kW = 44; // logical px
+constexpr int kW = 44;
 constexpr int kH = 176;
 constexpr int kRadius = 14;
 constexpr int kBorder = 2;
-constexpr int kMargin = 8;       // gap to the screen edges and the panel
+constexpr int kMargin = 8;
 constexpr int kTrackW = 6;
 constexpr int kTrackTop = 16;
-constexpr int kTrackBottom = 42; // room for the speaker under the scale
-constexpr int kIconY = kH - 22;  // speaker centre
-constexpr int kShownMs = 1500;   // stays this long after the last change
+constexpr int kTrackBottom = 42;
+constexpr int kIconY = kH - 22;
+constexpr int kShownMs = 1500;
 constexpr int kFadeMs = 180;
-} // namespace
+}
 
 VolumeOverlay::VolumeOverlay(QWidget *owner)
     : ScaledWidget(owner, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint
@@ -97,7 +97,6 @@ void VolumeOverlay::paintEvent(QPaintEvent *)
     const qreal inset = kBorder / 2.0;
     p.drawRoundedRect(QRectF(inset, inset, kW - kBorder, kH - kBorder), kRadius, kRadius);
 
-    // The scale: the filled part grows from the bottom.
     const QRectF track((kW - kTrackW) / 2.0, kTrackTop, kTrackW, kH - kTrackTop - kTrackBottom);
     p.setPen(Qt::NoPen);
     p.setBrush(t.track);
@@ -108,7 +107,6 @@ void VolumeOverlay::paintEvent(QPaintEvent *)
         p.drawRoundedRect(QRectF(track.left(), track.bottom() - filled, kTrackW, filled), kTrackW / 2.0, kTrackW / 2.0);
     }
 
-    // Speaker in the theme's colour: waves follow the level, a cross when silent.
     const qreal cx = kW / 2.0 - 5.0;
     QPainterPath speaker;
     speaker.moveTo(cx - 6.0, kIconY - 3.0);

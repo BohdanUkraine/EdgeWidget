@@ -8,9 +8,9 @@
 #include <algorithm>
 
 namespace {
-constexpr int kFallbackPollMs = 1000; // events do the real work where the OS has them
+constexpr int kFallbackPollMs = 1000;
 constexpr int kOptimisticMs = 2500;
-} // namespace
+}
 
 MediaController::MediaController(QObject *parent)
     : QObject(parent)
@@ -38,7 +38,6 @@ MediaController::~MediaController()
 
 void MediaController::scheduleRefresh()
 {
-    // OS events arrive on other threads and in bursts: coalesce into one refresh.
     if (m_refreshQueued.exchange(true))
         return;
     QMetaObject::invokeMethod(m_worker, [this] {
@@ -55,15 +54,13 @@ void MediaController::refresh()
     try {
         st = m_player->poll();
     } catch (...) {
-        m_player->reset(); // player went away; reconnect next time
+        m_player->reset();
     }
     QMetaObject::invokeMethod(this, [this, st] { onLocalState(st); });
 }
 
 void MediaController::publish(MediaState st)
 {
-    // Keep optimistic values until the player reports them (or they time out),
-    // otherwise a stale poll would make the buttons flicker back.
     Pending &p = m_pending;
     if (p.until.hasExpired()) {
         p = {};
@@ -121,8 +118,6 @@ void MediaController::command(std::function<void(LocalPlayer &)> fn)
     });
 }
 
-// ---------------------------------------------------------------- routing: local / remote / launch
-
 void MediaController::setRemote(SpotifyClient *spotify)
 {
     m_remote = spotify;
@@ -136,17 +131,15 @@ void MediaController::onLocalState(const MediaState &state)
     if (state.available) {
         m_remotePoll.stop();
         m_remoteState = {};
-        if (!state.title.isEmpty()) // keep "Starting Spotify…" until it reports a track
+        if (!state.title.isEmpty())
             SpotifyLauncher::instance().finished();
         if (m_afterLaunch != AfterLaunch::None) {
-            // Spotify just came up after we started it: do what the user clicked.
             const AfterLaunch action = std::exchange(m_afterLaunch, AfterLaunch::None);
             QTimer::singleShot(700, this, [this, action] { runAfterLaunch(action); });
         }
         publish(state);
         return;
     }
-    // Nothing plays on this PC: maybe on a phone or speaker? Ask the Web API.
     if (m_remote && m_remote->isConnected() && !m_remotePoll.isActive()) {
         m_remotePoll.start();
         pollRemote();
@@ -160,7 +153,7 @@ void MediaController::pollRemote()
         return;
     m_remote->fetchPlayback([this](MediaState st, const QString &coverUrl) {
         if (m_localAvailable)
-            return; // a local player showed up meanwhile; it wins
+            return;
         if (coverUrl != m_remoteImageUrl) {
             m_remoteImageUrl = coverUrl;
             m_remoteCover = {};
@@ -189,7 +182,6 @@ bool MediaController::remoteActive() const
     return !m_localAvailable && m_remote && m_remote->isConnected() && m_remoteState.available;
 }
 
-// Neither a local player nor a remote device: start Spotify quietly, act once it is up.
 bool MediaController::needsLaunch(AfterLaunch then)
 {
     if (m_localAvailable || remoteActive())
@@ -210,8 +202,6 @@ void MediaController::runAfterLaunch(AfterLaunch action)
         }
     });
 }
-
-// ---------------------------------------------------------------- commands
 
 void MediaController::togglePlayPause()
 {
@@ -278,8 +268,7 @@ void MediaController::toggleShuffle()
 
 void MediaController::cycleRepeat()
 {
-    // Spotify order: off -> list -> track -> off
-    static constexpr int nextMode[] = { 2, 0, 1 }; // indexed by current mode
+    static constexpr int nextMode[] = { 2, 0, 1 };
     setRepeat(nextMode[std::clamp(m_state.repeat, 0, 2)]);
 }
 
@@ -319,15 +308,12 @@ void MediaController::seek(qint64 positionMs)
 
 void MediaController::setPlaying(bool playing)
 {
-    // With nothing to control, "play" still starts Spotify (togglePlayPause launches it).
     if (m_state.available ? playing != m_state.playing : playing)
         togglePlayPause();
 }
 
 void MediaController::setVolume(int percent)
 {
-    // The Web API knows which device plays (the desktop app shows a phone's playback too);
-    // without it, at least the Spotify app on this PC.
     if (m_remote && m_remote->isConnected())
         m_remote->setVolume(percent);
     else

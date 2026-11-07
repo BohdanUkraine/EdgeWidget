@@ -10,10 +10,6 @@ class MediaController;
 class PanelContent;
 class SpotifyClient;
 
-// Frameless panel docked to a screen edge (side, size, position and window layer come
-// from AppSettings and apply live).
-// Collapsed: only the handle with the chevron is visible at the edge.
-// Expanded: the panel slides out from behind the edge (Android edge-panel style).
 class EdgePanel : public QWidget
 {
     Q_OBJECT
@@ -24,7 +20,6 @@ public:
 
     qreal reveal() const { return m_reveal; }
     void setReveal(qreal value);
-
 
 public slots:
     void expand();
@@ -38,7 +33,7 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     bool event(QEvent *event) override;
-    bool eventFilter(QObject *watched, QEvent *event) override; // Space = play / pause
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     enum class Drag { None, Pending, Horizontal, Vertical };
@@ -46,19 +41,19 @@ private:
     void animateTo(bool expanded);
     void applyGeometry();
     QRect availableArea() const;
-    int handleWidth() const;       // blended with m_reveal when the handle is hidden, see .cpp
+    int handleWidth() const;
     QRect handleRect() const;
-    QSize panelSize() const;       // expanded content size in px
-    int handleHeight() const;      // collapsed height in px
+    QSize panelSize() const;
+    int handleHeight() const;
     qreal centerY(qreal position) const;
     qreal positionForCenter(qreal center) const;
     bool rightSide() const;
-    int inwardDx(int dx) const;    // positive = towards the screen centre
+    int inwardDx(int dx) const;
     bool ownsWindow(QWidget *window) const;
 
     qreal m_reveal = 0.0;
     bool m_expanded = false;
-    std::optional<qreal> m_dragPosition; // live position while dragging the handle
+    std::optional<qreal> m_dragPosition;
 
     MediaController *m_media;
     PanelContent *m_content = nullptr;

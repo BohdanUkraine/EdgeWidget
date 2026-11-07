@@ -9,8 +9,6 @@
 class CoverCache;
 class MediaController;
 
-// The player part of the panel: spinning vinyl with the transport buttons on the left,
-// the current track and a seekable progress bar under the library column.
 class PlayerView : public ScaledWidget
 {
     Q_OBJECT
@@ -18,13 +16,8 @@ class PlayerView : public ScaledWidget
 public:
     PlayerView(MediaController *media, CoverCache *covers, QWidget *parent = nullptr);
 
-    // Colour of the physical record on the player's reader; invalid = classic black vinyl.
     void setRecordColor(const QColor &color);
 
-    // The playlist fader just picked this track: show it as the current one right away —
-    // title, cover, duration — instead of waiting for Spotify to confirm the switch (which,
-    // while paused, may not happen at all until Play is pressed; see DeviceController). Clears
-    // itself the moment the real track actually changes to anything, matching or not.
     void setPreview(const QString &title, const QString &artist, const QString &imageUrl, qint64 durationMs);
 
 protected:
@@ -56,7 +49,7 @@ private:
     MediaController *m_media;
     CoverCache *m_covers;
     MediaState m_state;
-    QImage m_cover; // scaled for the vinyl label
+    QImage m_cover;
     QColor m_recordColor;
 
     bool m_previewPinned = false;
@@ -64,9 +57,9 @@ private:
     QString m_previewArtist;
     QString m_previewImageUrl;
     qint64 m_previewDurationMs = 0;
-    QString m_previewBaseTrackKey; // m_state's track key when the preview was set; any change unpins
+    QString m_previewBaseTrackKey;
 
-    QTimer m_frameTimer; // spins the record while playing
+    QTimer m_frameTimer;
     QElapsedTimer m_sinceFrame;
     qreal m_angle = 0.0;
 

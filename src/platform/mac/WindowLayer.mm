@@ -6,8 +6,6 @@
 
 #import <AppKit/AppKit.h>
 
-// On every Space, out of Cmd+` / Mission Control. Full-screen apps live in their own Space,
-// so "above windows" is just the floating level; "above everything" also joins those Spaces.
 void WindowLayer::apply()
 {
     if (!m_window->isVisible())

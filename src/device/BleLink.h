@@ -13,14 +13,6 @@ class QBluetoothDeviceDiscoveryAgent;
 class QLowEnergyController;
 class QLowEnergyService;
 
-// BLE connection to the real MediaSpin: Nordic UART Service on the device named "MediaSpin",
-// one message per write (RX) / notify (TX), see shared/PROTOCOL.md. Scans, connects,
-// subscribes to TX and reconnects by itself, without pairing in the OS settings;
-// "connected" means notifications are on.
-//
-// Delivery works like TCP: every command gets a number (seq), the device answers ACK with it once
-// it has done the command, and the next one goes only after that. No ACK in kAckMs: the same
-// command again (the device does a repeated seq only once), up to kMaxTries times.
 class BleLink : public QObject
 {
     Q_OBJECT
@@ -41,9 +33,9 @@ private:
     void onDeviceFound(const QBluetoothDeviceInfo &info);
     void connectTo(const QBluetoothDeviceInfo &info);
     void onServiceState();
-    void sendHead();         // the oldest unacknowledged command, if none is in flight
+    void sendHead();
     void onAckTimeout();
-    void drop(int retryMs); // forget the connection, try again after retryMs
+    void drop(int retryMs);
 
     QBluetoothDeviceDiscoveryAgent *m_agent = nullptr;
     QLowEnergyController *m_controller = nullptr;
@@ -53,7 +45,6 @@ private:
     QTimer m_retry;
     bool m_ready = false;
 
-    // One command in flight at a time, until its ACK; written with response.
     QList<MediaSpin::Message> m_queue;
     bool m_inFlight = false;
     int m_tries = 0;

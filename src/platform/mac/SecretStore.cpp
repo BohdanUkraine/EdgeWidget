@@ -6,7 +6,6 @@
 #include <QByteArray>
 
 namespace {
-// One generic password per key in the login Keychain, under the service "EdgeWidget".
 CFMutableDictionaryRef query(const QString &key)
 {
     CFMutableDictionaryRef q = CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks,
@@ -18,10 +17,9 @@ CFMutableDictionaryRef query(const QString &key)
     CFRelease(account);
     return q;
 }
-} // namespace
+}
 
 namespace SecretStore {
-
 QString load(const QString &key)
 {
     CFMutableDictionaryRef q = query(key);
@@ -40,7 +38,7 @@ QString load(const QString &key)
 void save(const QString &key, const QString &value)
 {
     CFMutableDictionaryRef q = query(key);
-    SecItemDelete(q); // replace, not update: simpler and the same result
+    SecItemDelete(q);
     if (!value.isEmpty()) {
         CFDataRef data = value.toUtf8().toCFData();
         CFDictionarySetValue(q, kSecValueData, data);
@@ -51,4 +49,4 @@ void save(const QString &key, const QString &value)
     CFRelease(q);
 }
 
-} // namespace SecretStore
+}

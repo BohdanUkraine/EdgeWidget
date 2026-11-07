@@ -1,4 +1,4 @@
-// C++/WinRT first: Qt's keyword macros must not leak into the WinRT headers.
+// WinRT headers first: Qt's keyword macros break them.
 #define NOMINMAX
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -43,8 +43,6 @@ QImage readThumbnail(const IRandomAccessStreamReference &ref)
     return QImage::fromData(bytes);
 }
 
-// Spotify through Windows "Global System Media Transport Controls": no login or API keys,
-// works with the Spotify desktop app. Event driven.
 class WinLocalPlayer final : public LocalPlayer
 {
 public:
@@ -59,7 +57,7 @@ public:
 
     ~WinLocalPlayer() override
     {
-        reset(); // WinRT objects must go before the apartment
+        reset();
         winrt::uninit_apartment();
     }
 
@@ -89,7 +87,6 @@ public:
         if (const auto repeat = info.AutoRepeatMode())
             st.repeat = int(repeat.Value());
 
-        // Players update the timeline rarely, so extrapolate from the last update.
         const auto tl = s.GetTimelineProperties();
         auto pos = tl.Position() - tl.StartTime();
         if (st.playing) {
@@ -101,7 +98,6 @@ public:
         st.positionMs = std::clamp<qint64>(toMs(pos), 0, st.durationMs);
         st.sampledAtMs = MediaState::nowMs();
 
-        // Media properties (and the thumbnail) are the slow part: only re-read on change.
         if (propsDirty.exchange(false) || (cover.isNull() && coverAttempts < 6)) {
             const auto props = s.TryGetMediaPropertiesAsync().get();
             const QString t = toQString(props.Title());
@@ -114,7 +110,6 @@ public:
                 cover = {};
                 coverAttempts = 0;
             }
-            // The thumbnail often shows up a moment after the title, so retry a few times.
             if (cover.isNull() && coverAttempts < 6) {
                 ++coverAttempts;
                 try {
@@ -143,7 +138,7 @@ public:
 
     void seek(qint64 positionMs) override
     {
-        withSession([positionMs](auto &s) { s.TryChangePlaybackPositionAsync(positionMs * 10'000).get(); }); // 100 ns
+        withSession([positionMs](auto &s) { s.TryChangePlaybackPositionAsync(positionMs * 10'000).get(); }); // 100 ns units
     }
 
 private:
@@ -163,8 +158,6 @@ private:
                 m_notify();
             });
         }
-        // Spotify only: other players (Media Player, a browser video) are not this widget's business,
-        // and without a local Spotify the Web API shows what plays on the phone.
         GlobalSystemMediaTransportControlsSession found{ nullptr };
         for (const auto &s : manager.GetSessions()) {
             if (toQString(s.SourceAppUserModelId()).contains("spotify", Qt::CaseInsensitive)) {
@@ -197,7 +190,7 @@ private:
         });
     }
 
-    std::function<void()> m_notify; // thread-safe "something changed"
+    std::function<void()> m_notify;
 
     GlobalSystemMediaTransportControlsSessionManager manager{ nullptr };
     GlobalSystemMediaTransportControlsSessionManager::SessionsChanged_revoker sessionsRevoker;
@@ -209,12 +202,12 @@ private:
     GlobalSystemMediaTransportControlsSession::MediaPropertiesChanged_revoker propsRevoker;
 
     std::atomic<bool> propsDirty{ true };
-    std::atomic<bool> sessionsDirty{ false }; // player restarted: session objects are new
+    std::atomic<bool> sessionsDirty{ false };
     QString title, artist, album;
     QImage cover;
     int coverAttempts = 0;
 };
-} // namespace
+}
 
 std::unique_ptr<LocalPlayer> LocalPlayer::create(std::function<void()> notify)
 {

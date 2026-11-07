@@ -8,7 +8,6 @@ constexpr int kTabSize = 28;
 constexpr int kTabTop = 14;
 constexpr int kTabGap = 6;
 
-// "Your Library": two books and a leaning one.
 void paintLibraryIcon(QPainter &p, const QColor &color)
 {
     p.setPen(QPen(color, 1.8, Qt::SolidLine, Qt::RoundCap));
@@ -22,15 +21,15 @@ void paintGearIcon(QPainter &p, const QColor &color)
     p.setPen(Qt::NoPen);
     p.setBrush(color);
     for (int i = 0; i < 8; ++i) {
-        p.drawRoundedRect(QRectF(-1.6, -7.5, 3.2, 4), 0.8, 0.8); // teeth
+        p.drawRoundedRect(QRectF(-1.6, -7.5, 3.2, 4), 0.8, 0.8);
         p.rotate(45);
     }
     QPainterPath body;
     body.addEllipse(QPointF(), 5.4, 5.4);
-    body.addEllipse(QPointF(), 2.2, 2.2); // hole (odd-even fill)
+    body.addEllipse(QPointF(), 2.2, 2.2);
     p.drawPath(body);
 }
-} // namespace
+}
 
 TabStrip::TabStrip(QWidget *parent)
     : ScaledWidget(parent)

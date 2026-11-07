@@ -13,10 +13,9 @@ QString command()
 {
     return QLatin1Char('"') + QDir::toNativeSeparators(QCoreApplication::applicationFilePath()) + QLatin1Char('"');
 }
-} // namespace
+}
 
 namespace Autostart {
-
 bool isEnabled()
 {
     return QSettings(kRunKey, QSettings::NativeFormat).contains(kKey);
@@ -38,4 +37,4 @@ void refresh()
         key.setValue(kKey, command());
 }
 
-} // namespace Autostart
+}

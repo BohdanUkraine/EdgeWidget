@@ -18,13 +18,13 @@ constexpr int kVinylCx = 91;
 constexpr int kVinylCy = 82;
 constexpr int kVinylR = 64;
 constexpr int kLabelR = 24;
-constexpr int kBottomRowY = 176; // buttons and progress bar
+constexpr int kBottomRowY = 176;
 constexpr int kButtonStep = 30;
 constexpr int kNowPlayingY = 146;
 constexpr int kTimeW = 34;
-constexpr int kCoverPx = 128;       // cached cover size for the label (HiDPI-friendly)
-constexpr qreal kDegPerSec = 200.0; // 33 1/3 rpm
-} // namespace
+constexpr int kCoverPx = 128;
+constexpr qreal kDegPerSec = 200.0;
+}
 
 PlayerView::PlayerView(MediaController *media, CoverCache *covers, QWidget *parent)
     : ScaledWidget(parent)
@@ -53,7 +53,7 @@ void PlayerView::onState(const MediaState &state)
     }
     m_state = state;
     if (m_previewPinned && state.trackKey() != m_previewBaseTrackKey)
-        m_previewPinned = false; // the real track moved on, one way or another: show it now
+        m_previewPinned = false;
     updateSpin();
     update();
 }
@@ -75,8 +75,6 @@ void PlayerView::setPreview(const QString &title, const QString &artist, const Q
     m_previewDurationMs = durationMs;
     update();
 }
-
-// ---------------------------------------------------------------- spinning
 
 void PlayerView::updateSpin()
 {
@@ -108,18 +106,16 @@ void PlayerView::hideEvent(QHideEvent *event)
     updateSpin();
 }
 
-// ---------------------------------------------------------------- geometry
-
 qint64 PlayerView::displayedPosition() const
 {
     if (m_previewPinned)
-        return 0; // not actually cued yet (see DeviceController's pending playlist pick)
+        return 0;
     return m_seeking ? m_seekPreview : m_state.positionNow();
 }
 
 QRect PlayerView::buttonRect(Hit button) const
 {
-    const int index = int(button) - int(Shuffle); // Shuffle..Repeat -> 0..4
+    const int index = int(button) - int(Shuffle);
     const int cx = kVinylCx + (index - 2) * kButtonStep;
     const int size = button == Play ? 30 : 26;
     return QRect(cx - size / 2, kBottomRowY - size / 2, size, size);
@@ -144,7 +140,6 @@ PlayerView::Hit PlayerView::hitTest(const QPoint &pos) const
     const QPointF d = QPointF(pos) - QPointF(kVinylCx, kVinylCy);
     const bool onVinyl = d.x() * d.x() + d.y() * d.y() <= kVinylR * kVinylR;
     if (!m_state.available) {
-        // Nothing to control yet, but play still works: it starts Spotify quietly.
         if (buttonRect(Play).adjusted(-2, -2, 2, 2).contains(pos))
             return Play;
         return onVinyl ? Vinyl : None;
@@ -160,14 +155,11 @@ PlayerView::Hit PlayerView::hitTest(const QPoint &pos) const
     return None;
 }
 
-// ---------------------------------------------------------------- input
-
 void PlayerView::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() != Qt::LeftButton)
         return;
     const QPoint pos = logical(event->position());
-    // Act on press, not release: feels instant.
     switch (hitTest(pos)) {
     case Shuffle: m_media->toggleShuffle(); break;
     case Prev: m_media->previous(); break;
@@ -216,8 +208,6 @@ void PlayerView::leaveEvent(QEvent *event)
     update();
 }
 
-// ---------------------------------------------------------------- painting
-
 void PlayerView::paintEvent(QPaintEvent *)
 {
     QPainter p(this);
@@ -237,7 +227,6 @@ void PlayerView::paintVinyl(QPainter &p)
     p.save();
     p.translate(c);
 
-    // Black vinyl, or coloured vinyl in the colour of the record lying on the player.
     QRadialGradient disc(QPointF(), kVinylR);
     disc.setColorAt(0.0, m_recordColor.isValid() ? m_recordColor.darker(130) : QColor(26, 26, 26));
     disc.setColorAt(1.0, m_recordColor.isValid() ? m_recordColor.darker(260) : QColor(8, 8, 8));
@@ -246,12 +235,11 @@ void PlayerView::paintVinyl(QPainter &p)
     p.drawEllipse(QPointF(), kVinylR, kVinylR);
 
     p.setBrush(Qt::NoBrush);
-    for (int r = kLabelR + 4; r < kVinylR - 2; r += 3) { // grooves
+    for (int r = kLabelR + 4; r < kVinylR - 2; r += 3) {
         p.setPen(QPen(QColor(255, 255, 255, (r / 3) % 2 ? 14 : 6), 1));
         p.drawEllipse(QPointF(), r, r);
     }
 
-    // Label with the album cover spins with the record.
     p.rotate(m_angle);
     QPainterPath label;
     label.addEllipse(QPointF(), kLabelR, kLabelR);
@@ -261,10 +249,8 @@ void PlayerView::paintVinyl(QPainter &p)
         const QImage &cover = showPreviewCover ? previewCover : m_cover;
         p.save();
         p.setClipPath(label);
-        // Windows thumbnails from Spotify have a frame and a logo strip: use their centre.
-        // Web API covers (music on another device) and the playlist's own track covers
-        // (the preview, fetched straight from Spotify's library data) are both clean.
         const QRectF src = (m_state.remote || showPreviewCover) ? QRectF(cover.rect())
+                           // Windows thumbnails have a frame and a logo strip
                            : QRectF(cover.rect()).adjusted(kCoverPx * 0.18, kCoverPx * 0.12, -kCoverPx * 0.18,
                                                             -kCoverPx * 0.24);
         p.drawImage(QRectF(-kLabelR, -kLabelR, 2 * kLabelR, 2 * kLabelR), cover, src);
@@ -278,10 +264,9 @@ void PlayerView::paintVinyl(QPainter &p)
     }
     p.setPen(Qt::NoPen);
     p.setBrush(Qt::black);
-    p.drawEllipse(QPointF(), 3, 3); // spindle hole
+    p.drawEllipse(QPointF(), 3, 3);
     p.restore();
 
-    // Static light reflection on the grooves (does not rotate, so the record looks lit).
     QConicalGradient sheen(c, 45);
     const QColor clear(255, 255, 255, 0);
     const QColor shine(255, 255, 255, 30);
@@ -314,7 +299,7 @@ void PlayerView::paintNowPlaying(QPainter &p)
     QString artist = m_previewPinned && !launching ? m_previewArtist
         : m_state.available && !launching ? m_state.artist : QString();
     if (m_state.remote && !m_state.deviceName.isEmpty() && !launching && !m_previewPinned)
-        artist += QStringLiteral("  ·  ") + m_state.deviceName; // playing on another device
+        artist += QStringLiteral("  ·  ") + m_state.deviceName;
 
     const QFontMetrics tm(title);
     const QString shownTitle = tm.elidedText(name, Qt::ElideRight, r.width() * 2 / 3);
@@ -376,7 +361,7 @@ void PlayerView::paintButton(QPainter &p, Hit button)
         path.cubicTo(-1, -5, 1, 5, 7, 5);
         path.moveTo(-7, 5);
         path.cubicTo(-1, 5, 1, -5, 7, -5);
-        path.moveTo(4.5, -7.5); // arrow heads
+        path.moveTo(4.5, -7.5);
         path.lineTo(7, -5);
         path.lineTo(4.5, -2.5);
         path.moveTo(4.5, 2.5);
@@ -392,7 +377,7 @@ void PlayerView::paintButton(QPainter &p, Hit button)
         p.setBrush(Qt::NoBrush);
         p.drawRoundedRect(QRectF(-7, -5, 14, 10), 3, 3);
         p.drawPolyline(QPolygonF({ QPointF(-1, -7.5), QPointF(1.5, -5), QPointF(-1, -2.5) }));
-        if (m_state.repeat == 1) { // repeat one track
+        if (m_state.repeat == 1) {
             QFont f = font();
             f.setPixelSize(8);
             f.setBold(true);

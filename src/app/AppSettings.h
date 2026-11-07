@@ -3,33 +3,28 @@
 #include <QColor>
 #include <QObject>
 
-// User preferences (persisted in QSettings). Every change emits changed(), and all
-// views repaint / re-layout live.
 class AppSettings : public QObject
 {
     Q_OBJECT
 
 public:
-    // Where the panel sits among other windows.
-    enum class Layer { BelowWindows, AboveWindows, AboveAll }; // AboveWindows: full-screen apps cover it
-    // What the device's fader controls: time within the track, or which track in the playlist.
+    enum class Layer { BelowWindows, AboveWindows, AboveAll };
     enum class FaderMode { Timeline, Playlist };
-    // What the device's volume knob controls.
     enum class VolumeTarget { System, Spotify };
 
     static AppSettings &instance();
 
-    qreal scale() const { return m_scale; }              // main panel size, 1.0 = 100 %
-    int handleWidth() const { return m_handleWidth; }    // the tab that stays on screen, px
-    int handleHeight() const { return m_handleHeight; }  // px
-    bool handleVisible() const { return m_handleVisible; } // false: not on screen at all while collapsed
-    int cardHeight() const { return m_cardHeight; }      // track list card, logical px
-    int scrubPopupHeight() const { return m_scrubPopupHeight; } // playlist-scrub preview: box height, logical px
+    qreal scale() const { return m_scale; }
+    int handleWidth() const { return m_handleWidth; }
+    int handleHeight() const { return m_handleHeight; }
+    bool handleVisible() const { return m_handleVisible; }
+    int cardHeight() const { return m_cardHeight; }
+    int scrubPopupHeight() const { return m_scrubPopupHeight; }
     bool rightSide() const { return m_rightSide; }
-    qreal position() const { return m_position; }        // 0 = top of the screen, 1 = bottom
+    qreal position() const { return m_position; }
     bool darkTheme() const { return m_darkTheme; }
     QColor accent() const { return m_accent; }
-    QString language() const { return m_language; }      // "auto", "uk", "en"
+    QString language() const { return m_language; }
     Layer layer() const { return m_layer; }
     FaderMode faderMode() const { return m_faderMode; }
     VolumeTarget volumeTarget() const { return m_volumeTarget; }
@@ -78,21 +73,20 @@ inline qreal uiScale()
     return AppSettings::instance().scale();
 }
 
-// Colours of the current theme.
 struct Theme
 {
     bool dark = true;
-    QColor bg;      // panel / card background
+    QColor bg;
     QColor text;
     QColor subText;
-    QColor track;   // progress bar groove
-    QColor hover;   // row hover background
-    QColor line;    // thin separators, outlines
-    QColor accent;  // borders, active items
+    QColor track;
+    QColor hover;
+    QColor line;
+    QColor accent;
 
     static Theme current();
     QColor fade(int alpha) const { return QColor(bg.red(), bg.green(), bg.blue(), alpha); }
-    static QString css(const QColor &c) // for Qt stylesheets
+    static QString css(const QColor &c)
     {
         return QStringLiteral("rgba(%1,%2,%3,%4)").arg(c.red()).arg(c.green()).arg(c.blue()).arg(c.alpha());
     }

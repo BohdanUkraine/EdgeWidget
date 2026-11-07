@@ -9,7 +9,7 @@
 namespace LibraryStyle {
 namespace {
 constexpr int kTrackArt = 32;
-constexpr int kCoverPx = 96; // cached cover size, HiDPI-friendly
+constexpr int kCoverPx = 96;
 
 QPolygonF playTriangle(const QPointF &c, qreal size)
 {
@@ -23,7 +23,7 @@ QPainterPath artPath(const QRectF &r, const LibraryItem &item)
 {
     QPainterPath path;
     if (item.kind == LibraryItem::Artist)
-        path.addEllipse(r); // artists are round, like in Spotify
+        path.addEllipse(r);
     else
         path.addRoundedRect(r, 4, 4);
     return path;
@@ -52,7 +52,7 @@ void paintArt(QPainter &p, const QFont &base, const QRectF &r, const LibraryItem
 
     if (!cover.isNull()) {
         p.save();
-        p.setClipPath(path, Qt::IntersectClip); // keep the caller's clip (scrolling lists)
+        p.setClipPath(path, Qt::IntersectClip);
         p.drawImage(r, cover);
         p.restore();
         return;
@@ -67,7 +67,6 @@ void paintArt(QPainter &p, const QFont &base, const QRectF &r, const LibraryItem
     p.drawText(r, Qt::AlignCenter, QStringLiteral("♪"));
 }
 
-// Small vinyl with NFC waves: "write this to a record".
 void paintNfcButton(QPainter &p, const QRect &r, bool hovered)
 {
     const QColor color = hovered ? th().accent : th().subText;
@@ -97,7 +96,7 @@ void paintNfcButton(QPainter &p, const QRect &r, bool hovered)
     }
     p.restore();
 }
-} // namespace
+}
 
 QRectF artRect(const QRect &row)
 {
@@ -132,14 +131,12 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
     const QRectF art = artRect(row);
     paintArt(p, base, art, item, cover);
 
-    // The playing playlist / album stands out with a thin ring around its cover.
     if (state.active) {
         p.setPen(QPen(th().accent, 1.5));
         p.setBrush(Qt::NoBrush);
         p.drawPath(artPath(art.adjusted(-2, -2, 2, 2), item));
     }
 
-    // The playing item always shows "pause"; others show "play" when the cover is hovered.
     const bool artHovered = state.hovered && state.hoverPart == RowPart::Art;
     const bool playingHere = state.active && state.playing;
     if (playingHere || artHovered) {
@@ -147,7 +144,7 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
         p.setBrush(QColor(0, 0, 0, artHovered ? 140 : 110));
         p.drawPath(artPath(art, item));
         const QPointF c = art.center();
-        p.setBrush(playingHere ? th().accent : QColor(Qt::white)); // over the cover image
+        p.setBrush(playingHere ? th().accent : QColor(Qt::white));
         if (playingHere) {
             p.drawRoundedRect(QRectF(c.x() - 5.5, c.y() - 7, 4, 14), 1, 1);
             p.drawRoundedRect(QRectF(c.x() + 1.5, c.y() - 7, 4, 14), 1, 1);
@@ -179,7 +176,6 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
 
     p.setFont(title);
     p.setPen(state.active ? th().accent : th().text);
-    // Liked Songs is named by us, so it follows the UI language.
     const QString name = item.kind == LibraryItem::Liked ? QObject::tr("Улюблені треки") : item.name;
     p.drawText(QRect(textX, row.y() + 4, textW, 19), Qt::AlignLeft | Qt::AlignVCenter,
                QFontMetrics(title).elidedText(name, Qt::ElideRight, textW));
@@ -203,13 +199,12 @@ void paintTrack(QPainter &p, const QFont &base, const QRect &row, const QImage &
     QFont sub = base;
     sub.setPixelSize(11);
 
-    // Small cover; "play" over it on hover, an equalizer while this track plays.
     const QRectF art(row.x() + 4, row.y() + (kTrackH - kTrackArt) / 2.0, kTrackArt, kTrackArt);
     QPainterPath artPath;
     artPath.addRoundedRect(art, 3, 3);
     if (!cover.isNull()) {
         p.save();
-        p.setClipPath(artPath, Qt::IntersectClip); // keep the caller's clip (scrolling lists)
+        p.setClipPath(artPath, Qt::IntersectClip);
         p.drawImage(art, cover);
         p.restore();
     } else {
@@ -222,7 +217,7 @@ void paintTrack(QPainter &p, const QFont &base, const QRect &row, const QImage &
         p.setBrush(QColor(0, 0, 0, 130));
         p.drawPath(artPath);
         if (hovered) {
-            p.setBrush(Qt::white); // over the cover image
+            p.setBrush(Qt::white);
             p.drawPolygon(playTriangle(art.center(), 5));
         } else {
             p.setBrush(th().accent);
@@ -245,7 +240,6 @@ void paintTrack(QPainter &p, const QFont &base, const QRect &row, const QImage &
     p.drawText(QRect(row.right() - 10 - durW, row.y(), durW, kTrackH), Qt::AlignRight | Qt::AlignVCenter,
                formatTime(track.durationMs));
 
-    // The playing / pointed-at song stands out with a border around the whole row.
     if (current && drawBorder) {
         p.setPen(QPen(th().accent, 2));
         p.setBrush(Qt::NoBrush);
@@ -330,7 +324,7 @@ QString nfcTooltip()
     return QObject::tr("Записати на NFC-платівку");
 }
 
-} // namespace LibraryStyle
+}
 
 CoverCache::CoverCache(SpotifyClient *spotify, QObject *parent)
     : QObject(parent)

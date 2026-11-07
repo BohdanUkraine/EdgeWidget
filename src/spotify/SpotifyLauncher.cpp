@@ -4,7 +4,7 @@
 
 namespace {
 constexpr int kLaunchTimeoutMs = 20000;
-} // namespace
+}
 
 SpotifyLauncher &SpotifyLauncher::instance()
 {
@@ -37,7 +37,6 @@ bool SpotifyLauncher::launch()
         emit failed(tr("Не вдалося запустити Spotify"));
         return false;
     }
-    // Already running (maybe still starting up) or just started: wait for it to show up.
     setLaunching(true);
     m_timeout.start(kLaunchTimeoutMs);
     return true;

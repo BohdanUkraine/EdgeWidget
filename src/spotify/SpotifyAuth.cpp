@@ -23,7 +23,7 @@ const char kScopes[] = "user-library-read playlist-read-private playlist-read-co
 const QString kAccounts = QStringLiteral("https://accounts.spotify.com");
 constexpr quint16 kRedirectPort = 8888;
 constexpr int kLoginTimeoutMs = 5 * 60 * 1000;
-const QString kRefreshTokenKey = QStringLiteral("spotify/refreshToken"); // existing logins stay valid
+const QString kRefreshTokenKey = QStringLiteral("spotify/refreshToken");
 
 QString randomString(int length)
 {
@@ -34,11 +34,11 @@ QString randomString(int length)
         s += QLatin1Char(chars[QRandomGenerator::system()->bounded(int(sizeof(chars) - 1))]);
     return s;
 }
-} // namespace
+}
 
 QString SpotifyAuth::redirectUri()
 {
-    // Spotify requires a loopback IP literal here, "localhost" is rejected.
+    // Spotify rejects "localhost" here.
     return QStringLiteral("http://127.0.0.1:%1/callback").arg(kRedirectPort);
 }
 
@@ -73,8 +73,6 @@ void SpotifyAuth::logout()
     saveRefreshToken();
     emit loggedOut(was);
 }
-
-// ---------------------------------------------------------------- login
 
 void SpotifyAuth::login()
 {
@@ -126,12 +124,11 @@ void SpotifyAuth::stopServer()
     }
 }
 
-// The browser comes back to http://127.0.0.1:8888/callback?code=...&state=...
 void SpotifyAuth::onCallback(QTcpSocket *socket)
 {
     const QByteArray head = socket->peek(8192);
     if (!head.contains("\r\n"))
-        return; // request line not complete yet
+        return;
     const QList<QByteArray> requestLine = head.left(head.indexOf("\r\n")).split(' ');
     socket->readAll();
 
@@ -172,8 +169,6 @@ void SpotifyAuth::onCallback(QTcpSocket *socket)
               });
 }
 
-// ---------------------------------------------------------------- tokens
-
 void SpotifyAuth::postToken(const QList<QPair<QString, QString>> &form, std::function<void(bool)> done)
 {
     QByteArray body;
@@ -195,13 +190,13 @@ void SpotifyAuth::postToken(const QList<QPair<QString, QString>> &form, std::fun
             const QString reason = o.value("error_description").toString(o.value("error").toString());
             emit error(tr("Spotify: не вдалося отримати токен (%1)").arg(reason.isEmpty() ? reply->errorString() : reason));
             if (o.value("error").toString() == "invalid_grant")
-                logout(); // refresh token revoked or expired
+                logout();
             done(false);
             return;
         }
         m_accessToken = o["access_token"].toString();
         m_expires = QDateTime::currentDateTimeUtc().addSecs(o["expires_in"].toInt(3600) - 60);
-        if (o.contains("refresh_token")) { // Spotify may rotate it
+        if (o.contains("refresh_token")) {
             m_refreshToken = o["refresh_token"].toString();
             saveRefreshToken();
         }
@@ -217,13 +212,10 @@ void SpotifyAuth::withToken(std::function<void(const QString &)> fn)
     }
     if (m_refreshToken.isEmpty()) {
         emit error(tr("Spotify не підключено"));
+        fn({});
         return;
     }
-    // Concurrent callers wait for a single refresh.
-    m_tokenWaiters.append([this, fn](bool ok) {
-        if (ok)
-            fn(m_accessToken);
-    });
+    m_tokenWaiters.append([this, fn](bool ok) { fn(ok ? m_accessToken : QString()); });
     if (m_refreshing)
         return;
     m_refreshing = true;

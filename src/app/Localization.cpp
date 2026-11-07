@@ -9,9 +9,7 @@
 #include <QWidget>
 
 namespace {
-// Ukrainian source text -> English. Keep in sync with the tr() strings in the sources.
 const QList<QPair<const char *, const char *>> kEnglish = {
-    // player / library
     { "Нічого не грає", "Nothing playing" },
     { "Запускаю Spotify…", "Starting Spotify…" },
     { "Не вдалося запустити Spotify", "Couldn't start Spotify" },
@@ -30,10 +28,8 @@ const QList<QPair<const char *, const char *>> kEnglish = {
     { "Завантажую треки…", "Loading tracks…" },
     { "Не вдалося завантажити треки", "Couldn't load tracks" },
     { "Тут порожньо", "Nothing here" },
-    // tray
     { "Про Qt…", "About Qt…" },
     { "Вийти", "Quit" },
-    // settings
     { "Налаштування", "Settings" },
     { "Розміри", "Size" },
     { "Панель", "Panel" },
@@ -71,7 +67,7 @@ const QList<QPair<const char *, const char *>> kEnglish = {
     { "Комп'ютер", "Computer" },
     { "Крутилка програвача: гучність усього комп'ютера або лише Spotify.",
       "The player's knob: the volume of the whole computer, or Spotify only." },
-    { "Не підключено. Шукаю програвач (емулятор на цьому ПК)…", "Not connected. Looking for the player (emulator on this PC)…" },
+    { "Не підключено. Шукаю програвач…", "Not connected. Looking for the player…" },
     { "Підключено. На рідері платівка %1", "Connected. Record on the reader: %1" },
     { "Підключено. Поклади платівку на рідер", "Connected. Put a record on the reader" },
     { "Фейдер", "Fader" },
@@ -89,7 +85,6 @@ const QList<QPair<const char *, const char *>> kEnglish = {
     { "Підключено", "Connected" },
     { "Змінити акаунт / Client ID…", "Change account / Client ID…" },
     { "Увійти в Spotify…", "Sign in to Spotify…" },
-    // Spotify setup dialog
     { "Підключення Spotify", "Connect Spotify" },
     { "Відкрий <a href='https://developer.spotify.com/dashboard'>developer.spotify.com/dashboard</a> і натисни <b>Create app</b>.",
       "Open <a href='https://developer.spotify.com/dashboard'>developer.spotify.com/dashboard</a> and click <b>Create app</b>." },
@@ -101,7 +96,6 @@ const QList<QPair<const char *, const char *>> kEnglish = {
     { "Копіювати", "Copy" },
     { "Client ID (32 символи)", "Client ID (32 characters)" },
     { "Увійти в Spotify", "Sign in to Spotify" },
-    // Spotify messages
     { "Спершу вкажи Client ID", "Enter your Client ID first" },
     { "Порт %1 зайнятий іншою програмою", "Port %1 is used by another program" },
     { "Spotify підключено", "Spotify connected" },
@@ -120,11 +114,10 @@ const QList<QPair<const char *, const char *>> kEnglish = {
     { "Spotify не зміг увімкнути цей плейлист чи альбом: він недоступний",
       "Spotify couldn't start this playlist or album: it is unavailable" },
 };
-} // namespace
+}
 
 QString Localization::Dictionary::translate(const char *, const char *sourceText, const char *, int) const
 {
-    // Context-free: the same Ukrainian text means the same thing everywhere.
     return strings.value(QString::fromUtf8(sourceText));
 }
 
@@ -138,10 +131,9 @@ Localization::Localization()
 {
     for (const auto &[uk, en] : kEnglish)
         m_english.strings.insert(QString::fromUtf8(uk), QString::fromUtf8(en));
-    // Deployed next to the exe; when run from the build tree, straight from Qt.
-    for (const QString &dir : { QCoreApplication::applicationDirPath() + "/translations",              // Windows
-                                QCoreApplication::applicationDirPath() + "/../Resources/translations", // macOS
-                                QCoreApplication::applicationDirPath() + "/../share/edgewidget/translations", // Linux
+    for (const QString &dir : { QCoreApplication::applicationDirPath() + "/translations",
+                                QCoreApplication::applicationDirPath() + "/../Resources/translations",
+                                QCoreApplication::applicationDirPath() + "/../share/edgewidget/translations",
                                 QLibraryInfo::path(QLibraryInfo::TranslationsPath) }) {
         if (m_qtUkrainian.load(QStringLiteral("qtbase_uk"), dir))
             break;
@@ -182,14 +174,13 @@ void Localization::apply()
     m_current = lang;
     m_applied = true;
 
-    QCoreApplication::removeTranslator(&m_english); // no-op if not installed
+    QCoreApplication::removeTranslator(&m_english);
     QCoreApplication::removeTranslator(&m_qtUkrainian);
     if (lang == QLatin1String("en"))
         QCoreApplication::installTranslator(&m_english);
     else if (!m_qtUkrainian.isEmpty())
         QCoreApplication::installTranslator(&m_qtUkrainian);
 
-    // Hand-painted views call tr() while painting: just repaint them.
     for (QWidget *w : QApplication::allWidgets())
         w->update();
     emit languageChanged();

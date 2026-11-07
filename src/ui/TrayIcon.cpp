@@ -26,7 +26,7 @@ void TrayIcon::fillMenu()
 {
     m_menu.clear();
     m_menu.addAction(tr("Вийти"), qApp, [] {
-        qInfo("[app] quit from the tray menu"); // tells a deliberate exit apart in the logs
+        qInfo("[app] quit from the tray menu");
         QApplication::quit();
     });
 }
@@ -40,11 +40,6 @@ void TrayIcon::styleMenu()
                                         "QMenu::item { padding: 6px 22px 6px 16px; background: transparent; }"
                                         "QMenu::item:selected { background: %4; color: %2; }")
                              .arg(Theme::css(t.bg), Theme::css(t.text), Theme::css(t.accent), Theme::css(selected)));
-}
-
-void TrayIcon::notify(const QString &message)
-{
-    showMessage(QStringLiteral("Edge Widget"), message, QSystemTrayIcon::Warning, 5000);
 }
 
 QIcon TrayIcon::vinylIcon()

@@ -1,15 +1,11 @@
 #pragma once
 
 #include <QByteArray>
-#include <QList>
 #include <QString>
 
 #include <optional>
 
-// MediaSpin record player protocol (shared/PROTOCOL.md, shared/proto/api/request.proto).
-// The message is tiny, so it is encoded by hand instead of pulling in libprotobuf.
 namespace MediaSpin {
-
 enum class Command : quint32 {
     Unknown = 0,
     Pause = 1,
@@ -25,18 +21,17 @@ enum class Command : quint32 {
     SwitchTo = 11,
     Unbind = 12,
     TrackLen = 13,
-    Error = 14, // ESP -> PC: a request failed, data = text for the user
-    Ack = 15,   // ESP -> PC: the command with this seq was received and done
-    SetMode = 16, // PC -> ESP: fader mode, data "0" timeline / "1" playlist; on connect and on change
-    FaderTouch = 17, // ESP -> PC: hand on the fader "1" / released "0" (after the final MOVE_TO)
-    RequestSync = 18, // ESP -> PC: just connected, resend full state (SetMode/TrackLen/MoveTo/Pause)
+    Error = 14,
+    Ack = 15,
+    SetMode = 16,
+    FaderTouch = 17,
+    RequestSync = 18,
 };
 
-// What is written on a physical record.
 struct Record
 {
     QString uri;
-    quint32 color = 0; // 0xRRGGBB
+    quint32 color = 0;
 };
 
 struct Message
@@ -44,23 +39,11 @@ struct Message
     Command command = Command::Unknown;
     QString data;
     std::optional<Record> record;
-    quint32 seq = 0; // PC -> ESP command number for the ACK (0: none); set by BleLink
+    quint32 seq = 0;
 };
 
 QByteArray encode(const Message &message);
 std::optional<Message> decode(const QByteArray &bytes);
-QString describe(const Message &message); // for logs
+QString describe(const Message &message);
 
-// TCP framing used with the emulator: varint length + message bytes.
-QByteArray frame(const Message &message);
-
-class FrameReader
-{
-public:
-    QList<Message> feed(const QByteArray &bytes);
-
-private:
-    QByteArray m_buffer;
-};
-
-} // namespace MediaSpin
+}

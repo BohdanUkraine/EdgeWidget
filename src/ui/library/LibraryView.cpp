@@ -11,7 +11,7 @@ using namespace LibraryStyle;
 
 namespace {
 constexpr int kDetailAnimMs = 260;
-} // namespace
+}
 
 LibraryView::LibraryView(SpotifyClient *spotify, CoverCache *covers, QWidget *parent)
     : ScaledWidget(parent)
@@ -35,10 +35,9 @@ LibraryView::LibraryView(SpotifyClient *spotify, CoverCache *covers, QWidget *pa
     });
 
     connect(m_spotify, &SpotifyClient::libraryChanged, this, [this] {
-        m_hover = {}; // the hovered row may have moved
+        m_hover = {};
         m_scroll.clamp(maxScroll());
         if (m_detail >= 0) {
-            // Rows may have moved; follow the opened item or close it.
             const auto &lib = m_spotify->library();
             const auto it = std::find_if(lib.begin(), lib.end(),
                                          [this](const LibraryItem &i) { return i.uri == m_detailUri; });
@@ -65,8 +64,6 @@ void LibraryView::setPlaying(bool playing)
     m_playing = playing;
     update();
 }
-
-// ---------------------------------------------------------------- open / close
 
 void LibraryView::openDetail(int index)
 {
@@ -95,8 +92,6 @@ void LibraryView::closeDetail(bool fadeHeader)
     emit detailClosed(fadeHeader);
 }
 
-// ---------------------------------------------------------------- geometry
-
 QRect LibraryView::rowRect(int index) const
 {
     return QRect(0, index * kRowH - m_scroll.offset, int(lw()), kRowH);
@@ -110,14 +105,12 @@ int LibraryView::maxScroll() const
 LibraryView::Hover LibraryView::hitTest(const QPoint &pos) const
 {
     if (!m_spotify->isConnected() || m_detail >= 0 || !logicalRect().contains(pos))
-        return {}; // while open, the item lives in TrackListPopup
+        return {};
     const int index = (pos.y() + m_scroll.offset) / kRowH;
     if (index < 0 || index >= m_spotify->library().size())
         return {};
     return { index, partAt(rowRect(index), pos) };
 }
-
-// ---------------------------------------------------------------- painting
 
 void LibraryView::paintEvent(QPaintEvent *)
 {
@@ -130,7 +123,6 @@ void LibraryView::paintEvent(QPaintEvent *)
         return;
     }
 
-    // The other rows fade out by the middle of the opening animation.
     if (m_detail < 0 || m_detailT < 1.0) {
         p.save();
         p.setOpacity(std::max(0.0, 1.0 - 2.0 * m_detailT));
@@ -184,12 +176,10 @@ void LibraryView::paintPlaceholder(QPainter &p)
     p.drawText(area.adjusted(0, 22, 0, 0), Qt::AlignCenter, hint);
 }
 
-// ---------------------------------------------------------------- input
-
 void LibraryView::wheelEvent(QWheelEvent *event)
 {
     if (m_detail >= 0) {
-        event->ignore(); // the opened item does not scroll
+        event->ignore();
         return;
     }
     m_scroll.wheel(event, kRowH, maxScroll());
@@ -244,7 +234,7 @@ void LibraryView::mouseReleaseEvent(QMouseEvent *event)
     switch (hit.part) {
     case RowPart::Art:
         if (item.uri == m_spotify->activeUri())
-            emit togglePlayRequested(); // pause / resume instead of restarting it
+            emit togglePlayRequested();
         else
             m_spotify->play(item.uri);
         break;

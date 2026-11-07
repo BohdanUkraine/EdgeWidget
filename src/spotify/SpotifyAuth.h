@@ -9,28 +9,24 @@ class QNetworkAccessManager;
 class QTcpServer;
 class QTcpSocket;
 
-// Spotify login with the user's own developer app ("bring your own Client ID", like
-// Home Assistant). OAuth Authorization Code + PKCE: the browser redirects back to a tiny
-// server on 127.0.0.1, no client secret is stored, the refresh token is in SecretStore.
 class SpotifyAuth : public QObject
 {
     Q_OBJECT
 
 public:
-    static QString redirectUri(); // must be added to the app in the Spotify dashboard
+    static QString redirectUri();
 
     SpotifyAuth(QNetworkAccessManager *nam, QObject *parent = nullptr);
 
     QString clientId() const { return m_clientId; }
-    void setClientId(const QString &id); // signs out: tokens belong to the old app
+    void setClientId(const QString &id);
     bool isConnected() const { return !m_refreshToken.isEmpty(); }
 
-    void login(); // opens the browser, finishes on the loopback redirect
+    void login();
     void logout();
 
-    // Runs fn with a valid access token, refreshing it first when needed.
-    void withToken(std::function<void(const QString &token)> fn);
-    void invalidateToken() { m_accessToken.clear(); } // the API said 401
+    void withToken(std::function<void(const QString &token)> fn); // empty token: offline or signed out
+    void invalidateToken() { m_accessToken.clear(); }
 
 signals:
     void loggedIn();

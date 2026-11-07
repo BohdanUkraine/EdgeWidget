@@ -15,6 +15,7 @@
 #include <QNetworkDiskCache>
 #include <QNetworkReply>
 #include <QRegularExpression>
+#include <QSettings>
 #include <QStandardPaths>
 #include <QTimer>
 
@@ -23,8 +24,8 @@
 namespace {
 const QString kApi = QStringLiteral("https://api.spotify.com/v1");
 constexpr int kMaxTracks = 500;
-constexpr int kDeviceWaitAttempts = 18; // ~18 s for a freshly started Spotify to register
-constexpr int kVolumeIntervalMs = 300;  // the Web API answers 429 to a knob's every step
+constexpr int kDeviceWaitAttempts = 18;
+constexpr int kVolumeIntervalMs = 300;
 
 QString libraryCachePath()
 {
@@ -38,7 +39,6 @@ QString recentPath()
 
 constexpr int kMaxRecent = 200;
 
-// Images come largest first; take the smallest one that is still >= 160 px.
 QString pickImage(const QJsonArray &images)
 {
     QString url;
@@ -67,13 +67,13 @@ QByteArray json(const QJsonObject &o)
 {
     return QJsonDocument(o).toJson(QJsonDocument::Compact);
 }
-} // namespace
+}
 
 SpotifyClient::SpotifyClient(QObject *parent)
     : QObject(parent)
     , m_auth(new SpotifyAuth(&m_nam, this))
 {
-    auto *cache = new QNetworkDiskCache(this); // album covers
+    auto *cache = new QNetworkDiskCache(this);
     cache->setCacheDirectory(QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/images");
     cache->setMaximumCacheSize(100 * 1024 * 1024);
     m_nam.setCache(cache);
@@ -94,13 +94,14 @@ SpotifyClient::SpotifyClient(QObject *parent)
     });
 
     loadLibraryCache();
+    QSettings s;
+    m_lastContext = s.value("spotify/lastContext").toString();
+    m_lastTrack = s.value("spotify/lastTrack").toString();
     if (isConnected()) {
         QTimer::singleShot(0, this, &SpotifyClient::refreshLibrary);
-        QTimer::singleShot(0, this, &SpotifyClient::updateNowPlaying);
+        QTimer::singleShot(0, this, [this] { updateNowPlaying(); });
     }
 }
-
-// ---------------------------------------------------------------- account
 
 QString SpotifyClient::clientId() const { return m_auth->clientId(); }
 void SpotifyClient::setClientId(const QString &id) { m_auth->setClientId(id); }
@@ -113,14 +114,17 @@ void SpotifyClient::onLoggedOut(bool wasConnected)
     m_library.clear();
     m_recent.clear();
     m_activeUri.clear();
+    m_lastContext.clear();
+    m_lastTrack.clear();
     QFile::remove(libraryCachePath());
     QFile::remove(recentPath());
+    QSettings s;
+    s.remove("spotify/lastContext");
+    s.remove("spotify/lastTrack");
     emit libraryChanged();
     if (wasConnected)
         emit connectedChanged(false);
 }
-
-// ---------------------------------------------------------------- library cache
 
 void SpotifyClient::loadLibraryCache()
 {
@@ -186,12 +190,13 @@ void SpotifyClient::applyRecentOrder()
     });
 }
 
-// ---------------------------------------------------------------- requests
-
-// Authorized API call. Retries once after a 401 (token expired early) and waits out 429s.
 void SpotifyClient::request(const QByteArray &verb, const QString &path, const QByteArray &body, Reply done, int attempt)
 {
     m_auth->withToken([=](const QString &token) {
+        if (token.isEmpty()) {
+            done(0, {});
+            return;
+        }
         QNetworkRequest req(QUrl(path.startsWith("https://") ? path : kApi + path));
         req.setRawHeader("Authorization", "Bearer " + token.toUtf8());
         req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
@@ -235,8 +240,6 @@ void SpotifyClient::fetchImage(const QString &url, QObject *context, std::functi
     });
 }
 
-// ---------------------------------------------------------------- library
-
 void SpotifyClient::refreshLibrary()
 {
     if (!isConnected() || m_loading)
@@ -244,28 +247,39 @@ void SpotifyClient::refreshLibrary()
     m_loading = true;
     emit libraryChanged();
 
-    // Spotify sidebar order: Liked Songs, playlists, albums, artists — then recently played first.
-    request("GET", "/me", {}, [this](int status, const QByteArray &body) {
+    auto finish = [this] {
+        m_loading = false;
+        emit libraryChanged();
+    };
+    request("GET", "/me", {}, [this, finish](int status, const QByteArray &body) {
+        if (status == 0) {
+            finish();
+            return;
+        }
         if (status == 200) {
             const QJsonObject me = QJsonDocument::fromJson(body).object();
             m_userId = me["id"].toString();
             m_userName = me["display_name"].toString(m_userId);
-            // Spotify has no UI-language field; the account country drives "auto" language.
             Localization::instance().setSpotifyCountry(me["country"].toString());
         }
-        fetchPage("/me/playlists?limit=50", LibraryItem::Playlist, {}, [this](QList<LibraryItem> playlists) {
-            fetchPage("/me/albums?limit=50", LibraryItem::Album, {}, [this, playlists](QList<LibraryItem> albums) {
+        fetchPage("/me/playlists?limit=50", LibraryItem::Playlist, {}, [=](QList<LibraryItem> playlists, bool ok) {
+            if (!ok)
+                return finish();
+            fetchPage("/me/albums?limit=50", LibraryItem::Album, {}, [=](QList<LibraryItem> albums, bool ok) {
+                if (!ok)
+                    return finish();
                 fetchPage("/me/following?type=artist&limit=50", LibraryItem::Artist, {},
-                          [this, playlists, albums](QList<LibraryItem> artists) {
+                          [=](QList<LibraryItem> artists, bool ok) {
+                              if (!ok)
+                                  return finish();
                               QList<LibraryItem> all;
                               if (!m_userId.isEmpty())
                                   all.append({ LibraryItem::Liked, "spotify:user:" + m_userId + ":collection",
                                                tr("Улюблені треки"), {}, {} });
                               m_library = all + playlists + albums + artists;
                               applyRecentOrder();
-                              m_loading = false;
                               saveLibraryCache();
-                              emit libraryChanged();
+                              finish();
                           });
             });
         });
@@ -273,7 +287,7 @@ void SpotifyClient::refreshLibrary()
 }
 
 void SpotifyClient::fetchPage(const QString &path, LibraryItem::Kind kind, QList<LibraryItem> collected,
-                              std::function<void(QList<LibraryItem>)> done)
+                              std::function<void(QList<LibraryItem>, bool ok)> done)
 {
     request("GET", path, {}, [=](int status, const QByteArray &body) mutable {
         if (status != 200) {
@@ -281,11 +295,10 @@ void SpotifyClient::fetchPage(const QString &path, LibraryItem::Kind kind, QList
                 emit error(tr("Щоб бачити плейлисти й виконавців, перепідключи Spotify (налаштування → Spotify)"));
             else if (status != 0)
                 emit error(apiError(status, body));
-            done(collected); // keep whatever loaded; the rest of the library still shows
+            done(collected, status != 0);
             return;
         }
         const QJsonObject root = QJsonDocument::fromJson(body).object();
-        // Followed artists are wrapped in {"artists": {...page...}}.
         const QJsonObject page = kind == LibraryItem::Artist ? root["artists"].toObject() : root;
         for (const QJsonValue &v : page["items"].toArray()) {
             const QJsonObject o = v.toObject();
@@ -297,7 +310,7 @@ void SpotifyClient::fetchPage(const QString &path, LibraryItem::Kind kind, QList
                 break;
             }
             case LibraryItem::Playlist:
-                if (!o.isEmpty()) // Spotify returns null for playlists it cannot show
+                if (!o.isEmpty())
                     collected.append({ kind, o["uri"].toString(), o["name"].toString(),
                                        o["owner"].toObject()["display_name"].toString(),
                                        pickImage(o["images"].toArray()) });
@@ -313,14 +326,12 @@ void SpotifyClient::fetchPage(const QString &path, LibraryItem::Kind kind, QList
         if (!next.isEmpty())
             fetchPage(next, kind, collected, done);
         else
-            done(collected);
+            done(collected, true);
     });
 }
 
 void SpotifyClient::fetchTracks(const LibraryItem &item, std::function<void(const QList<Track> &, bool)> done)
 {
-    // The ID is always the last segment — "spotify:KIND:ID", but also the older
-    // "spotify:user:USERID:KIND:ID" that some endpoints (play history among them) still use.
     const QString id = item.uri.section(':', -1);
     QString path;
     switch (item.kind) {
@@ -330,8 +341,8 @@ void SpotifyClient::fetchTracks(const LibraryItem &item, std::function<void(cons
     case LibraryItem::Artist: path = "/artists/" + id + "/top-tracks"; break;
     }
     fetchTrackPage(path, {}, [=](QList<Track> tracks, int status) {
-        // Newer API versions renamed playlist "tracks" to "items": try that before giving up.
-        if (status != 200 && item.kind == LibraryItem::Playlist && tracks.isEmpty()) {
+        if (status != 200 && status != 0 && item.kind == LibraryItem::Playlist && tracks.isEmpty()) {
+            // newer API versions renamed "tracks" to "items"
             fetchTrackPage("/playlists/" + id + "/items?limit=100", {}, [done](QList<Track> t, int st) {
                 done(t, st == 200 || !t.isEmpty());
             });
@@ -350,8 +361,6 @@ void SpotifyClient::fetchTrackPage(const QString &path, QList<Track> collected,
             return;
         }
         const QJsonObject page = QJsonDocument::fromJson(body).object();
-        // Album pages list tracks directly, saved tracks / playlists wrap them in "track"
-        // (or "item"), artist top tracks come as {"tracks": [...]}.
         const QJsonArray items = page.contains("items") ? page["items"].toArray() : page["tracks"].toArray();
         for (const QJsonValue &v : items) {
             QJsonObject t = v.toObject();
@@ -360,7 +369,7 @@ void SpotifyClient::fetchTrackPage(const QString &path, QList<Track> collected,
             else if (t["item"].isObject())
                 t = t["item"].toObject();
             if (t.isEmpty() || (t.contains("type") && t["type"].toString() != "track"))
-                continue; // podcast episodes, removed tracks
+                continue;
             collected.append({ t["uri"].toString(), t["name"].toString(), artistNames(t["artists"].toArray()),
                                qint64(t["duration_ms"].toDouble()), pickImage(t["album"].toObject()["images"].toArray()) });
         }
@@ -372,8 +381,6 @@ void SpotifyClient::fetchTrackPage(const QString &path, QList<Track> collected,
     });
 }
 
-// ---------------------------------------------------------------- playback
-
 void SpotifyClient::setActiveUri(const QString &uri)
 {
     if (uri == m_activeUri)
@@ -383,34 +390,37 @@ void SpotifyClient::setActiveUri(const QString &uri)
     bumpRecent(uri);
 }
 
-void SpotifyClient::updateNowPlaying()
+void SpotifyClient::updateNowPlaying(const QString &currentTitle)
 {
     if (!isConnected())
         return;
-    request("GET", "/me/player", {}, [this](int status, const QByteArray &body) {
+    request("GET", "/me/player", {}, [this, currentTitle](int status, const QByteArray &body) {
         if (status == 200) {
-            setActiveUri(QJsonDocument::fromJson(body).object()["context"].toObject()["uri"].toString());
+            const QJsonObject player = QJsonDocument::fromJson(body).object();
+            rememberLastPlayed(player);
+            setActiveUri(player["context"].toObject()["uri"].toString());
             return;
         }
-        // 204: Spotify has no Connect "device" session to report at all — common with playback
-        // paused from before (nothing has (re)engaged the session since), and it can stay this
-        // way indefinitely, not just right after startup. Polling for it to appear on its own
-        // made the app visibly sit there for several seconds and often still came up empty —
-        // ask Spotify's play history instead, which needs no live session at all.
+        // 204: no active session (paused since before): the remembered playlist, if its track is still loaded
         if (status == 204)
-            fetchLastPlayedContext();
+            setActiveUri(currentTitle.isEmpty() || currentTitle == m_lastTrack ? m_lastContext : QString());
     });
 }
 
-void SpotifyClient::fetchLastPlayedContext()
+void SpotifyClient::rememberLastPlayed(const QJsonObject &player)
 {
-    request("GET", "/me/player/recently-played?limit=1", {}, [this](int status, const QByteArray &body) {
-        if (status != 200)
-            return;
-        const QJsonArray items = QJsonDocument::fromJson(body).object()["items"].toArray();
-        if (!items.isEmpty())
-            setActiveUri(items.first().toObject()["context"].toObject()["uri"].toString());
-    });
+    const QJsonObject item = player["item"].toObject();
+    if (item.isEmpty())
+        return;
+    const QString context = player["context"].toObject()["uri"].toString();
+    const QString track = item["name"].toString();
+    if (context == m_lastContext && track == m_lastTrack)
+        return;
+    m_lastContext = context;
+    m_lastTrack = track;
+    QSettings s;
+    s.setValue("spotify/lastContext", context);
+    s.setValue("spotify/lastTrack", track);
 }
 
 QString SpotifyClient::contextUri(const QString &link)
@@ -423,15 +433,13 @@ QString SpotifyClient::contextUri(const QString &link)
 
 void SpotifyClient::play(const QString &contextUri)
 {
-    if (contextUri.startsWith(QLatin1String("spotify:track:"))) { // a track is not a context
+    if (contextUri.startsWith(QLatin1String("spotify:track:"))) {
         startPlayback(json({ { "uris", QJsonArray{ contextUri } } }));
         return;
     }
-    setActiveUri(contextUri); // highlight right away, the request takes a moment
-    // Without "offset", Spotify resumes wherever it last left off in this context (just
-    // restarted from 0 ms); an explicit offset to the first track makes it start from the top.
+    setActiveUri(contextUri);
     startPlayback(json({ { "context_uri", contextUri }, { "offset", QJsonObject{ { "position", 0 } } },
-                          { "position_ms", 0 } }));
+                          { "position_ms", 0 } })); // from the top, not where it stopped last time
 }
 
 void SpotifyClient::playTrack(const LibraryItem &context, const QList<Track> &tracks, int index)
@@ -440,7 +448,6 @@ void SpotifyClient::playTrack(const LibraryItem &context, const QList<Track> &tr
         return;
     QJsonObject body;
     if (context.kind == LibraryItem::Artist) {
-        // An artist context cannot start at a given track: play the list itself.
         QJsonArray uris;
         for (const Track &t : tracks)
             uris.append(t.uri);
@@ -458,7 +465,7 @@ void SpotifyClient::startPlayback(const QByteArray &body)
 {
     request("PUT", "/me/player/play", body, [this, body](int status, const QByteArray &reply) {
         if (status == 404) {
-            playOnAnyDevice(body); // usually nothing is active right now
+            playOnAnyDevice(body);
             return;
         }
         if (status == 403)
@@ -466,12 +473,10 @@ void SpotifyClient::startPlayback(const QByteArray &body)
         else if (status >= 300)
             emit error(apiError(status, reply));
         if (status >= 300)
-            updateNowPlaying(); // undo the optimistic highlight
+            updateNowPlaying();
     });
 }
 
-// Pick a device (preferably this computer). If Spotify runs nowhere, start the desktop
-// app quietly and wait for it to register as a device.
 void SpotifyClient::playOnAnyDevice(const QByteArray &body, int attempt)
 {
     request("GET", "/me/player/devices", {}, [this, body, attempt](int status, const QByteArray &reply) {
@@ -508,7 +513,7 @@ void SpotifyClient::playOnAnyDevice(const QByteArray &body, int attempt)
             else if (st >= 300)
                 emit error(apiError(st, r));
             if (st >= 300)
-                updateNowPlaying(); // undo the optimistic highlight
+                updateNowPlaying();
         });
     });
 }
@@ -538,6 +543,7 @@ void SpotifyClient::fetchPlayback(std::function<void(const MediaState &, const Q
             st.album = album["name"].toString();
             st.deviceName = o["device"].toObject()["name"].toString();
             coverUrl = pickImage(album["images"].toArray());
+            rememberLastPlayed(o);
             setActiveUri(o["context"].toObject()["uri"].toString());
         }
         done(st, coverUrl);

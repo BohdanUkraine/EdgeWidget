@@ -16,7 +16,6 @@ WindowLayer::WindowLayer(QWidget *window)
 
 bool WindowLayer::eventFilter(QObject *watched, QEvent *event)
 {
-    // A (re)created native window starts in the default layer.
     if (watched == m_window && event->type() == QEvent::Show) {
         m_applied = 0;
         QTimer::singleShot(0, this, &WindowLayer::apply);

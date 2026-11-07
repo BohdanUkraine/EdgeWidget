@@ -11,17 +11,17 @@
 
 #include <functional>
 
+class QJsonObject;
 class SpotifyAuth;
 
-// One row of the library list: Liked Songs, a playlist, a saved album or a followed artist.
 struct LibraryItem
 {
     enum Kind { Liked, Playlist, Album, Artist };
 
     Kind kind = Album;
-    QString uri; // context URI to play
+    QString uri;
     QString name;
-    QString owner; // artists of an album, owner of a playlist
+    QString owner;
     QString imageUrl;
 };
 
@@ -31,11 +31,9 @@ struct Track
     QString name;
     QString artists;
     qint64 durationMs = 0;
-    QString imageUrl; // album cover; empty in album track lists (use the album's)
+    QString imageUrl;
 };
 
-// Spotify Web API: the user's library, track lists, starting playback and remote control.
-// Login and tokens are handled by SpotifyAuth.
 class SpotifyClient : public QObject
 {
     Q_OBJECT
@@ -43,7 +41,6 @@ class SpotifyClient : public QObject
 public:
     explicit SpotifyClient(QObject *parent = nullptr);
 
-    // Account (see SpotifyAuth)
     QString clientId() const;
     void setClientId(const QString &id);
     bool isConnected() const;
@@ -51,24 +48,20 @@ public:
     void logout();
     QString userName() const { return m_userName; }
 
-    // Library
     bool isLoading() const { return m_loading; }
     const QList<LibraryItem> &library() const { return m_library; }
     void refreshLibrary();
     void fetchTracks(const LibraryItem &item, std::function<void(const QList<Track> &tracks, bool ok)> done);
     void fetchImage(const QString &url, QObject *context, std::function<void(const QImage &)> done);
 
-    // Playback
-    QString activeUri() const { return m_activeUri; } // playlist / album playing right now
-    void updateNowPlaying();
-    void play(const QString &contextUri); // album / playlist / artist, or a single track
-    // spotify:album:ID from an open.spotify.com link (URIs pass through).
+    QString activeUri() const { return m_activeUri; }
+    void updateNowPlaying(const QString &currentTitle = {});
+    void play(const QString &contextUri);
     static QString contextUri(const QString &link);
     void playTrack(const LibraryItem &context, const QList<Track> &tracks, int index);
-    // What plays on any device (cover not loaded: coverUrl instead).
     void fetchPlayback(std::function<void(const MediaState &state, const QString &coverUrl)> done);
-    void playerCommand(const QByteArray &verb, const QString &path); // e.g. PUT /me/player/pause
-    void setVolume(int percent); // of the active device, rate-limited (a knob sends many); phones refuse it
+    void playerCommand(const QByteArray &verb, const QString &path);
+    void setVolume(int percent);
 
 signals:
     void connectedChanged(bool connected);
@@ -81,17 +74,16 @@ private:
 
     void request(const QByteArray &verb, const QString &path, const QByteArray &body, Reply done, int attempt = 0);
     void fetchPage(const QString &path, LibraryItem::Kind kind, QList<LibraryItem> collected,
-                   std::function<void(QList<LibraryItem>)> done);
+                   std::function<void(QList<LibraryItem>, bool ok)> done);
     void fetchTrackPage(const QString &path, QList<Track> collected, std::function<void(QList<Track>, int status)> done);
     void startPlayback(const QByteArray &body);
     void playOnAnyDevice(const QByteArray &body, int attempt = 0);
-    void fetchLastPlayedContext(); // updateNowPlaying() fallback: no live Connect session to ask
     void setActiveUri(const QString &uri);
+    void rememberLastPlayed(const QJsonObject &player);
     void sendVolume();
     void onLoggedOut(bool wasConnected);
     void loadLibraryCache();
     void saveLibraryCache() const;
-    // Recently played contexts go first, like Spotify's "Recents" sort.
     void bumpRecent(const QString &uri);
     void applyRecentOrder();
 
@@ -99,12 +91,14 @@ private:
     SpotifyAuth *m_auth;
 
     QList<LibraryItem> m_library;
-    QStringList m_recent; // context URIs, most recently played first
+    QStringList m_recent;
     bool m_loading = false;
     QString m_activeUri;
-    QElapsedTimer m_volumeRefused; // one "can't change the volume" message per drag, not per step
-    QTimer m_volumeThrottle;       // running: a request just went out, later values wait for it
-    int m_volumeWanted = -1;       // latest value asked for
+    QString m_lastContext;
+    QString m_lastTrack;
+    QElapsedTimer m_volumeRefused;
+    QTimer m_volumeThrottle;
+    int m_volumeWanted = -1;
     int m_volumeSent = -1;
     QString m_userId;
     QString m_userName;

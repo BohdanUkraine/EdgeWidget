@@ -25,10 +25,9 @@ bool isProgram(DWORD pid, const wchar_t *exeName)
     const wchar_t *name = wcsrchr(path, L'\\');
     return _wcsicmp(name ? name + 1 : path, exeName) == 0;
 }
-} // namespace
+}
 
 namespace AppVolume {
-
 bool setSystem(int percent)
 {
     const HRESULT init = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
@@ -40,7 +39,7 @@ bool setSystem(int percent)
         winrt::com_ptr<IAudioEndpointVolume> volume;
         winrt::check_hresult(device->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, volume.put_void()));
         if (percent > 0)
-            volume->SetMute(FALSE, nullptr); // turning the knob up must be heard
+            volume->SetMute(FALSE, nullptr);
         ok = SUCCEEDED(volume->SetMasterVolumeLevelScalar(std::clamp(percent, 0, 100) / 100.0f, nullptr));
     } catch (const winrt::hresult_error &) {
     }
@@ -84,4 +83,4 @@ bool setSpotify(int percent)
     return found;
 }
 
-} // namespace AppVolume
+}

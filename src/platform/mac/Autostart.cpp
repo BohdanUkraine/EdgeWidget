@@ -13,7 +13,6 @@ QString plistPath()
     return QDir::homePath() + QStringLiteral("/Library/LaunchAgents/") + kLabel + QStringLiteral(".plist");
 }
 
-// A LaunchAgent: launchd starts the app at login. Points straight at the bundle's executable.
 QByteArray plist()
 {
     const QString exe = QCoreApplication::applicationFilePath().toHtmlEscaped();
@@ -29,10 +28,9 @@ QByteArray plist()
         .arg(kLabel, exe)
         .toUtf8();
 }
-} // namespace
+}
 
 namespace Autostart {
-
 bool isEnabled()
 {
     return QFile::exists(plistPath());
@@ -59,4 +57,4 @@ void refresh()
     }
 }
 
-} // namespace Autostart
+}

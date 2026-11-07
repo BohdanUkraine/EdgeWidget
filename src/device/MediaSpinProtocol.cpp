@@ -37,7 +37,6 @@ void writeBytes(QByteArray &out, int field, const QByteArray &bytes)
     out.append(bytes);
 }
 
-// Calls onField(field, varint value, bytes) for every field; unknown ones are the caller's to ignore.
 template<typename OnField>
 bool forEachField(const QByteArray &in, OnField onField)
 {
@@ -63,19 +62,19 @@ bool forEachField(const QByteArray &in, OnField onField)
             pos += int(size);
             break;
         }
-        case Fixed64: pos += 8; break; // not used by this protocol: skip
+        case Fixed64: pos += 8; break;
         case Fixed32: pos += 4; break;
         default: return false;
         }
     }
     return pos == in.size();
 }
-} // namespace
+}
 
 QByteArray encode(const Message &m)
 {
     QByteArray out;
-    if (m.command != Command::Unknown) { // proto3 does not write default values
+    if (m.command != Command::Unknown) {
         writeTag(out, 1, Varint);
         writeVarint(out, quint64(m.command));
     }
@@ -137,32 +136,4 @@ QString describe(const Message &m)
     return text;
 }
 
-QByteArray frame(const Message &message)
-{
-    const QByteArray body = encode(message);
-    QByteArray out;
-    writeVarint(out, quint64(body.size()));
-    return out + body;
 }
-
-QList<Message> FrameReader::feed(const QByteArray &bytes)
-{
-    m_buffer += bytes;
-    QList<Message> messages;
-    for (;;) {
-        int pos = 0;
-        quint64 size = 0;
-        if (!readVarint(m_buffer, pos, size)) {
-            if (m_buffer.size() >= 10)
-                m_buffer.clear(); // a length prefix is never this long: garbage, start over
-            return messages;      // otherwise wait for the rest
-        }
-        if (m_buffer.size() - pos < qint64(size))
-            return messages; // wait for the rest
-        if (auto message = decode(m_buffer.mid(pos, int(size))))
-            messages.append(*message);
-        m_buffer.remove(0, pos + int(size));
-    }
-}
-
-} // namespace MediaSpin
