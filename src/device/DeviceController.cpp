@@ -2,8 +2,8 @@
 
 #include "app/AppSettings.h"
 #include "device/BleLink.h"
-#include "platform/AppVolume.h"
 #include "playback/MediaController.h"
+#include "playback/VolumeController.h"
 
 #include <QDebug>
 
@@ -37,7 +37,9 @@ DeviceController::DeviceController(MediaController *media, SpotifyClient *spotif
     , m_media(media)
     , m_spotify(spotify)
     , m_link(new BleLink(this))
+    , m_volume(new VolumeController(spotify, this))
 {
+    connect(m_volume, &VolumeController::spotifyVolumeChanged, this, &DeviceController::spotifyVolumeChanged);
     connect(m_link, &BleLink::messageReceived, this, &DeviceController::onMessage);
     m_pendingTimeout.setSingleShot(true);
     m_pendingTimeout.setInterval(kCoverWaitMs);
@@ -208,16 +210,14 @@ void DeviceController::onMessage(const MediaSpin::Message &message)
             m_media->seek(qint64(message.data.toDouble() * 1000));
         }
         break;
-    case Command::SetVolume: {
-        const int percent = std::clamp(message.data.toInt(), 0, 100);
-        if (AppSettings::instance().volumeTarget() == AppSettings::VolumeTarget::System) {
-            AppVolume::setSystem(percent);
-        } else {
-            m_media->setVolume(percent);
-            emit spotifyVolumeChanged(percent);
-        }
+    case Command::SetVolume: // "+N" / "-N" a step, "mute", or the level itself
+        if (message.data == QLatin1String("mute"))
+            m_volume->toggleMute();
+        else if (message.data.startsWith(QLatin1Char('+')) || message.data.startsWith(QLatin1Char('-')))
+            m_volume->step(message.data.toInt());
+        else
+            m_volume->set(message.data.toInt());
         break;
-    }
     case Command::Error: emit deviceError(message.data); break;
     case Command::RequestSync:
         qDebug().noquote() << "[fader] REQUEST_SYNC: device asked for the full state again";

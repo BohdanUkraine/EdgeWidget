@@ -1,6 +1,5 @@
 #include "playback/MediaController.h"
 
-#include "platform/AppVolume.h"
 #include "platform/LocalPlayer.h"
 #include "spotify/SpotifyClient.h"
 #include "spotify/SpotifyLauncher.h"
@@ -310,14 +309,6 @@ void MediaController::setPlaying(bool playing)
 {
     if (m_state.available ? playing != m_state.playing : playing)
         togglePlayPause();
-}
-
-void MediaController::setVolume(int percent)
-{
-    if (m_remote && m_remote->isConnected())
-        m_remote->setVolume(percent);
-    else
-        AppVolume::setSpotify(percent);
 }
 
 void MediaController::setShuffle(bool on)

@@ -36,7 +36,6 @@ public slots:
     void setPlaying(bool playing);
     void setShuffle(bool on);
     void setRepeat(int mode);
-    void setVolume(int percent);
 
 signals:
     void stateChanged(const MediaState &state);

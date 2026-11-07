@@ -17,6 +17,7 @@
 #include <QRegularExpression>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QSysInfo>
 #include <QTimer>
 
 #include <algorithm>
@@ -560,6 +561,43 @@ void SpotifyClient::playerCommand(const QByteArray &verb, const QString &path)
     });
 }
 
+// Nothing active (paused for a while): this computer's Spotify is made active, without playing.
+void SpotifyClient::fetchVolume(std::function<void(int)> done)
+{
+    request("GET", "/me/player", {}, [this, done](int status, const QByteArray &body) {
+        if (status != 204) {
+            const QJsonObject device = QJsonDocument::fromJson(body).object()["device"].toObject();
+            const QJsonValue volume = device["volume_percent"];
+            m_volumeDevice = device["id"].toString();
+            done(status == 200 && volume.isDouble() ? volume.toInt() : -1);
+            return;
+        }
+        request("GET", "/me/player/devices", {}, [this, done](int st, const QByteArray &reply) {
+            // This PC by name, or the only computer there is: never wake someone else's laptop.
+            QList<QJsonObject> computers;
+            QJsonObject local;
+            for (const QJsonValue &v : QJsonDocument::fromJson(reply).object()["devices"].toArray()) {
+                const QJsonObject d = v.toObject();
+                if (d["type"].toString() != "Computer")
+                    continue;
+                computers.append(d);
+                if (d["name"].toString().compare(QSysInfo::machineHostName(), Qt::CaseInsensitive) == 0)
+                    local = d;
+            }
+            if (local.isEmpty() && computers.size() == 1)
+                local = computers.first();
+            const QJsonValue volume = local["volume_percent"];
+            if (st != 200 || !volume.isDouble()) {
+                done(-1);
+                return;
+            }
+            m_volumeDevice = local["id"].toString();
+            request("PUT", "/me/player", json({ { "device_ids", QJsonArray{ m_volumeDevice } }, { "play", false } }),
+                    [done, percent = volume.toInt()](int, const QByteArray &) { done(percent); });
+        });
+    });
+}
+
 void SpotifyClient::setVolume(int percent)
 {
     m_volumeWanted = percent;
@@ -571,8 +609,10 @@ void SpotifyClient::sendVolume()
 {
     m_volumeSent = m_volumeWanted;
     m_volumeThrottle.start();
-    request("PUT", QStringLiteral("/me/player/volume?volume_percent=%1").arg(m_volumeSent), {},
-            [this](int status, const QByteArray &reply) {
+    QString path = QStringLiteral("/me/player/volume?volume_percent=%1").arg(m_volumeSent);
+    if (!m_volumeDevice.isEmpty())
+        path += QStringLiteral("&device_id=") + m_volumeDevice;
+    request("PUT", path, {}, [this](int status, const QByteArray &reply) {
         if (status == 403) {
             if (!m_volumeRefused.isValid() || m_volumeRefused.elapsed() > 30000) {
                 m_volumeRefused.start();

@@ -55,6 +55,7 @@ qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/ui/library/LibraryStyle.cpp src/ui/library/LibraryStyle.h
     src/ui/library/TrackListPopup.cpp src/ui/library/TrackListPopup.h
     src/playback/MediaController.cpp src/playback/MediaController.h
+    src/playback/VolumeController.cpp src/playback/VolumeController.h
     src/device/MediaSpinProtocol.cpp src/device/MediaSpinProtocol.h
     src/device/BleLink.cpp src/device/BleLink.h
     src/device/DeviceController.cpp src/device/DeviceController.h

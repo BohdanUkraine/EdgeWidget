@@ -15,6 +15,7 @@
 
 class BleLink;
 class MediaController;
+class VolumeController;
 
 class DeviceController : public QObject
 {
@@ -56,6 +57,7 @@ private:
     MediaController *m_media;
     SpotifyClient *m_spotify;
     BleLink *m_link;
+    VolumeController *m_volume;
     bool m_hasRecord = false;
     QElapsedTimer m_sinceConnected;
     QString m_sentTrack;

@@ -62,6 +62,7 @@ public:
     void fetchPlayback(std::function<void(const MediaState &state, const QString &coverUrl)> done);
     void playerCommand(const QByteArray &verb, const QString &path);
     void setVolume(int percent);
+    void fetchVolume(std::function<void(int percent)> done); // -1: Spotify runs nowhere
 
 signals:
     void connectedChanged(bool connected);
@@ -100,6 +101,7 @@ private:
     QTimer m_volumeThrottle;
     int m_volumeWanted = -1;
     int m_volumeSent = -1;
+    QString m_volumeDevice;
     QString m_userId;
     QString m_userName;
 };
