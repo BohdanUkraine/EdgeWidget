@@ -50,6 +50,25 @@ void paintArt(QPainter &p, const QFont &base, const QRectF &r, const LibraryItem
         return;
     }
 
+    if (item.kind == LibraryItem::Folder) {
+        p.setPen(Qt::NoPen);
+        p.setBrush(th().track);
+        p.drawPath(path);
+        const QPointF c = r.center();
+        QPainterPath folder; // tab on the left, body below it
+        folder.moveTo(c.x() - 10, c.y() - 7);
+        folder.lineTo(c.x() - 3, c.y() - 7);
+        folder.lineTo(c.x() - 1, c.y() - 4.5);
+        folder.lineTo(c.x() + 10, c.y() - 4.5);
+        folder.lineTo(c.x() + 10, c.y() + 7);
+        folder.lineTo(c.x() - 10, c.y() + 7);
+        folder.closeSubpath();
+        p.setPen(QPen(th().subText, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        p.drawPath(folder);
+        return;
+    }
+
     if (!cover.isNull()) {
         p.save();
         p.setClipPath(path, Qt::IntersectClip);
@@ -137,8 +156,9 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
         p.drawPath(artPath(art.adjusted(-2, -2, 2, 2), item));
     }
 
-    const bool artHovered = state.hovered && state.hoverPart == RowPart::Art;
-    const bool playingHere = state.active && state.playing;
+    const bool folder = item.kind == LibraryItem::Folder; // opens on any click: no play, no record
+    const bool artHovered = state.hovered && state.hoverPart == RowPart::Art && !folder;
+    const bool playingHere = state.active && state.playing && !folder;
     if (playingHere || artHovered) {
         p.setPen(Qt::NoPen);
         p.setBrush(QColor(0, 0, 0, artHovered ? 140 : 110));
@@ -154,14 +174,21 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
     }
 
     const QRect nfc = nfcRect(row);
-    paintNfcButton(p, nfc, state.hovered && state.hoverPart == RowPart::Nfc);
+    if (folder) {
+        const QPointF c = QRectF(nfc).center();
+        p.setPen(QPen(state.hovered ? th().text : th().subText, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        p.drawPolyline(QPolygonF({ c + QPointF(-2, -5), c + QPointF(3, 0), c + QPointF(-2, 5) }));
+    } else {
+        paintNfcButton(p, nfc, state.hovered && state.hoverPart == RowPart::Nfc);
+    }
 
     const int textX = int(art.right()) + 10;
     const int textW = nfc.left() - 8 - textX;
     QFont title = base;
     title.setPixelSize(13);
     title.setBold(true);
-    title.setUnderline(state.hovered && state.hoverPart == RowPart::Text);
+    title.setUnderline(state.hovered && state.hoverPart == RowPart::Text && !folder);
     QFont sub = base;
     sub.setPixelSize(11);
 
@@ -171,6 +198,7 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
     case LibraryItem::Playlist: kind = QObject::tr("Плейлист"); break;
     case LibraryItem::Album: kind = QObject::tr("Альбом"); break;
     case LibraryItem::Artist: kind = QObject::tr("Виконавець"); break;
+    case LibraryItem::Folder: kind = QObject::tr("Папка"); break;
     }
     const QString subtitle = item.owner.isEmpty() ? kind : kind + QStringLiteral(" • ") + item.owner;
 
@@ -179,10 +207,46 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
     const QString name = item.kind == LibraryItem::Liked ? QObject::tr("Улюблені треки") : item.name;
     p.drawText(QRect(textX, row.y() + 4, textW, 19), Qt::AlignLeft | Qt::AlignVCenter,
                QFontMetrics(title).elidedText(name, Qt::ElideRight, textW));
+    // Pinned: a pin in the accent colour before the subtitle, as Spotify shows it.
+    int subX = textX;
+    if (item.pin >= 0) {
+        const QPointF c(textX + 4.5, row.y() + 31);
+        p.save();
+        p.translate(c);
+        p.rotate(45);
+        p.setPen(Qt::NoPen);
+        p.setBrush(th().accent);
+        p.drawRoundedRect(QRectF(-2.5, -5.5, 5, 5), 1, 1);   // head
+        p.drawRect(QRectF(-3.5, -1, 7, 1.6));                 // collar
+        p.drawPolygon(QPolygonF({ QPointF(-0.7, 0.6), QPointF(0.7, 0.6), QPointF(0, 5.5) })); // needle
+        p.restore();
+        subX += 13;
+    }
     p.setFont(sub);
     p.setPen(th().subText);
-    p.drawText(QRect(textX, row.y() + 23, textW, 16), Qt::AlignLeft | Qt::AlignVCenter,
-               QFontMetrics(sub).elidedText(subtitle, Qt::ElideRight, textW));
+    p.drawText(QRect(subX, row.y() + 23, textW - (subX - textX), 16), Qt::AlignLeft | Qt::AlignVCenter,
+               QFontMetrics(sub).elidedText(subtitle, Qt::ElideRight, textW - (subX - textX)));
+}
+
+void paintHeader(QPainter &p, const QFont &base, const QRect &r, const QString &title, bool back, bool hovered)
+{
+    const QColor color = back && hovered ? th().accent : th().text;
+    int x = r.x() + 2;
+    if (back) {
+        const qreal cy = r.center().y() + 0.5;
+        p.setPen(QPen(color, 1.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        p.drawPolyline(QPolygonF({ QPointF(x + 6, cy - 5.5), QPointF(x + 0.5, cy), QPointF(x + 6, cy + 5.5) }));
+        x += 15;
+    }
+    QFont f = base;
+    f.setPixelSize(14); // as the settings title always was; spills a pixel past the thin bar, nothing clips it
+    f.setBold(true);
+    p.setFont(f);
+    p.setPen(color);
+    const int w = r.right() - x;
+    p.drawText(QRect(x, r.y(), w, r.height()), Qt::AlignLeft | Qt::AlignVCenter,
+               QFontMetrics(f).elidedText(title, Qt::ElideRight, w));
 }
 
 void paintTrack(QPainter &p, const QFont &base, const QRect &row, const QImage &cover, const Track &track,

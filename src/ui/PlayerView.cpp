@@ -76,6 +76,16 @@ void PlayerView::setPreview(const QString &title, const QString &artist, const Q
     update();
 }
 
+void PlayerView::setContextName(const QString &name)
+{
+    if (name == m_contextName)
+        return;
+    m_contextName = name;
+    if (m_hover == Context && name.isEmpty())
+        m_hover = None;
+    update();
+}
+
 void PlayerView::updateSpin()
 {
     if (isVisible() && m_state.playing) {
@@ -128,6 +138,23 @@ QRect PlayerView::progressRect() const
     return QRect(left, kBottomRowY - 8, right - left, 16);
 }
 
+QRect PlayerView::nowPlayingRect() const
+{
+    return QRect(kRightX + 2, kNowPlayingY, kRightEnd - kRightX - 2, 20);
+}
+
+// Right-aligned, at most a third of the line.
+QRect PlayerView::contextRect() const
+{
+    if (m_contextName.isEmpty())
+        return {};
+    const QRect r = nowPlayingRect();
+    QFont f = font();
+    f.setPixelSize(11);
+    const int w = std::min(QFontMetrics(f).horizontalAdvance(m_contextName) + 1, r.width() / 3);
+    return QRect(r.right() + 1 - w, r.y(), w, r.height());
+}
+
 qint64 PlayerView::positionAt(int x) const
 {
     const QRect r = progressRect();
@@ -139,6 +166,8 @@ PlayerView::Hit PlayerView::hitTest(const QPoint &pos) const
 {
     const QPointF d = QPointF(pos) - QPointF(kVinylCx, kVinylCy);
     const bool onVinyl = d.x() * d.x() + d.y() * d.y() <= kVinylR * kVinylR;
+    if (contextRect().adjusted(-2, -2, 2, 2).contains(pos))
+        return Context;
     if (!m_state.available) {
         if (buttonRect(Play).adjusted(-2, -2, 2, 2).contains(pos))
             return Play;
@@ -167,6 +196,7 @@ void PlayerView::mousePressEvent(QMouseEvent *event)
     case Vinyl: m_media->togglePlayPause(); break;
     case Next: m_media->next(); break;
     case Repeat: m_media->cycleRepeat(); break;
+    case Context: emit contextClicked(); break;
     case Progress:
         m_seeking = true;
         m_seekPreview = positionAt(pos.x());
@@ -285,7 +315,9 @@ void PlayerView::paintVinyl(QPainter &p)
 void PlayerView::paintNowPlaying(QPainter &p)
 {
     const Theme th = Theme::current();
-    const QRect r(kRightX + 2, kNowPlayingY, kRightEnd - kRightX - 2, 20);
+    const QRect context = contextRect();
+    const QRect full = nowPlayingRect();
+    const QRect r = context.isNull() ? full : full.adjusted(0, 0, -(context.width() + 12), 0);
     QFont title = font();
     title.setPixelSize(12);
     title.setBold(true);
@@ -302,7 +334,7 @@ void PlayerView::paintNowPlaying(QPainter &p)
         artist += QStringLiteral("  ·  ") + m_state.deviceName;
 
     const QFontMetrics tm(title);
-    const QString shownTitle = tm.elidedText(name, Qt::ElideRight, r.width() * 2 / 3);
+    const QString shownTitle = tm.elidedText(name, Qt::ElideRight, std::min(full.width() * 2 / 3, r.width()));
     const int titleW = tm.horizontalAdvance(shownTitle);
     p.setFont(title);
     p.setPen(th.text);
@@ -315,6 +347,13 @@ void PlayerView::paintNowPlaying(QPainter &p)
         p.setPen(th.subText);
         p.drawText(QRect(x, r.y(), w, r.height()), Qt::AlignLeft | Qt::AlignVCenter,
                    QFontMetrics(sub).elidedText(QStringLiteral("  •  ") + artist, Qt::ElideRight, w));
+    }
+
+    if (!context.isNull()) {
+        p.setFont(sub);
+        p.setPen(m_hover == Context ? th.accent : th.subText);
+        p.drawText(context, Qt::AlignRight | Qt::AlignVCenter,
+                   QFontMetrics(sub).elidedText(m_contextName, Qt::ElideRight, context.width()));
     }
 }
 

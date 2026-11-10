@@ -42,4 +42,10 @@ bool launchQuietly()
                                    { QStringLiteral("shell:AppsFolder\\SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify") });
 }
 
+QStringList dataDirs()
+{
+    const QDir local(qEnvironmentVariable("LOCALAPPDATA"));
+    return { local.filePath("Spotify"), local.filePath("Packages/SpotifyAB.SpotifyMusic_zpdnekdrzrea0/LocalState/Spotify") };
+}
+
 }

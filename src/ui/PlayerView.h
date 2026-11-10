@@ -19,6 +19,11 @@ public:
     void setRecordColor(const QColor &color);
 
     void setPreview(const QString &title, const QString &artist, const QString &imageUrl, qint64 durationMs);
+    // Playlist (album, ...) the track plays from, right of the title; empty hides it.
+    void setContextName(const QString &name);
+
+signals:
+    void contextClicked();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -30,7 +35,7 @@ protected:
     void hideEvent(QHideEvent *event) override;
 
 private:
-    enum Hit { None, Shuffle, Prev, Play, Next, Repeat, Progress, Vinyl };
+    enum Hit { None, Shuffle, Prev, Play, Next, Repeat, Progress, Vinyl, Context };
 
     void onState(const MediaState &state);
     void tick();
@@ -39,6 +44,8 @@ private:
     Hit hitTest(const QPoint &pos) const;
     QRect buttonRect(Hit button) const;
     QRect progressRect() const;
+    QRect nowPlayingRect() const;
+    QRect contextRect() const;
     qint64 positionAt(int x) const;
 
     void paintVinyl(QPainter &p);
@@ -51,6 +58,7 @@ private:
     MediaState m_state;
     QImage m_cover;
     QColor m_recordColor;
+    QString m_contextName;
 
     bool m_previewPinned = false;
     QString m_previewTitle;

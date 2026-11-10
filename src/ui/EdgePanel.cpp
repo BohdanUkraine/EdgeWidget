@@ -140,6 +140,7 @@ void EdgePanel::applyGeometry()
 void EdgePanel::animateTo(bool expanded)
 {
     m_expanded = expanded;
+    m_content->setExpanded(expanded);
     m_anim.stop();
     m_anim.setStartValue(m_reveal);
     m_anim.setEndValue(expanded ? 1.0 : 0.0);

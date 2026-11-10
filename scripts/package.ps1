@@ -39,7 +39,7 @@ Step "Розгортання в $stage"
 Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
 $cmake = (Get-Command cmake -ErrorAction SilentlyContinue).Source
 if (-not $cmake) {
-    $vs = & (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe') -latest -products * -property installationPath
+    $vs = & (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe') -latest -products * -requires Microsoft.VisualStudio.Component.VC.CMake.Project -property installationPath
     $cmake = Join-Path "$vs" 'Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
 }
 $ErrorActionPreference = 'Continue' # windeployqt пише попередження в stderr

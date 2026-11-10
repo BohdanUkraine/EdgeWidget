@@ -31,4 +31,11 @@ bool launchQuietly()
     return false;
 }
 
+QStringList dataDirs()
+{
+    const QString home = QDir::homePath();
+    return { home + "/.cache/spotify", home + "/.var/app/com.spotify.Client/cache/spotify",
+             home + "/snap/spotify/common/.cache/spotify" };
+}
+
 }

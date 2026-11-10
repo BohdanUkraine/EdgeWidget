@@ -24,4 +24,10 @@ bool launchQuietly()
     return true;
 }
 
+QStringList dataDirs()
+{
+    const QString home = QString::fromNSString(NSHomeDirectory());
+    return { home + "/Library/Application Support/Spotify", home + "/Library/Caches/com.spotify.client" };
+}
+
 }

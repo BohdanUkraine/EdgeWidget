@@ -19,6 +19,8 @@ public:
 
     QString openUri() const { return m_open ? m_item.uri : QString(); }
     void previewIndex(int index);
+    // Once `uri` is open and loaded: scrolls to the track playing now.
+    void revealNowPlaying(const QString &uri);
 
 signals:
     void togglePlayRequested();
@@ -51,6 +53,8 @@ private:
     void paintTracks(QPainter &p, const QRect &list);
     void syncPreviewFromNowTitle();
     void animateBoxTo(qreal target);
+    void scrollToIndex(int index);
+    void applyReveal();
 
     SpotifyClient *m_spotify;
     CoverCache *m_covers;
@@ -75,9 +79,10 @@ private:
 
     int m_previewIndex = -1;
     bool m_previewPinned = false;
-    qreal m_boxY = 0;
+    qreal m_boxY = 0; // list coordinates: scrolls with the rows
     bool m_boxPositioned = false;
     QVariantAnimation m_boxAnim;
+    QString m_revealUri;
 
     LibraryStyle::ScrollGesture m_scroll;
     bool m_pressInList = false;

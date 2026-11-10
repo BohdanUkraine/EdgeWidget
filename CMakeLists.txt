@@ -51,6 +51,7 @@ qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/ui/TrayIcon.cpp src/ui/TrayIcon.h
     src/ui/VinylIcon.cpp src/ui/VinylIcon.h
     src/ui/VolumeOverlay.cpp src/ui/VolumeOverlay.h
+    src/ui/library/LibraryCard.cpp src/ui/library/LibraryCard.h
     src/ui/library/LibraryView.cpp src/ui/library/LibraryView.h
     src/ui/library/LibraryStyle.cpp src/ui/library/LibraryStyle.h
     src/ui/library/TrackListPopup.cpp src/ui/library/TrackListPopup.h
@@ -62,6 +63,7 @@ qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/spotify/SpotifyAuth.cpp src/spotify/SpotifyAuth.h
     src/spotify/SpotifyClient.cpp src/spotify/SpotifyClient.h
     src/spotify/SpotifyLauncher.cpp src/spotify/SpotifyLauncher.h
+    src/spotify/SpotifyLocalLibrary.cpp src/spotify/SpotifyLocalLibrary.h
     src/platform/AppInit.h
     src/platform/AppVolume.h
     src/platform/Autostart.h

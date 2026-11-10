@@ -148,6 +148,7 @@ void TrackListPopup::open(const LibraryItem &item, int rowTop)
         m_tracks = tracks;
         m_state = ok ? TracksState::Ready : TracksState::Failed;
         syncPreviewFromNowTitle();
+        applyReveal();
         update();
     });
 
@@ -180,6 +181,7 @@ void TrackListPopup::close(bool fadeHeader)
     m_open = false;
     m_fadeHeader = fadeHeader;
     m_hover = {};
+    m_revealUri.clear();
     ++m_requestId;
     m_anim.stop();
     m_anim.setStartValue(m_t);
@@ -215,7 +217,7 @@ void TrackListPopup::syncPreviewFromNowTitle()
     if (m_previewIndex < 0)
         m_boxPositioned = false;
     else
-        animateBoxTo(m_previewIndex * kTrackH - m_scroll.offset);
+        animateBoxTo(m_previewIndex * kTrackH);
 }
 
 void TrackListPopup::animateBoxTo(qreal target)
@@ -244,16 +246,39 @@ void TrackListPopup::previewIndex(int index)
         m_previewIndex = index;
         update();
     }
+    scrollToIndex(index);
+}
+
+void TrackListPopup::revealNowPlaying(const QString &uri)
+{
+    m_revealUri = uri;
+    applyReveal();
+}
+
+void TrackListPopup::applyReveal()
+{
+    if (m_revealUri.isEmpty() || !m_open || m_item.uri != m_revealUri || m_state == TracksState::Loading)
+        return;
+    m_revealUri.clear();
+    if (!m_previewPinned)
+        syncPreviewFromNowTitle();
+    if (m_previewIndex >= 0)
+        scrollToIndex(m_previewIndex);
+}
+
+// Centres the row where it can. The box sits on the row (list coordinates) and both ease
+// together, so while centred it stays still on screen and the list slides under it.
+void TrackListPopup::scrollToIndex(int index)
+{
     const int raw = index * kTrackH - (tracksRect().height() - kTrackH) / 2;
     const int target = std::clamp(raw, 0, maxScroll());
-    const bool centered = (target == raw);
     if (target != m_scroll.offset) {
         m_scrollAnim.stop();
         m_scrollAnim.setStartValue(m_scroll.offset);
         m_scrollAnim.setEndValue(target);
         m_scrollAnim.start();
     }
-    animateBoxTo(centered ? (tracksRect().height() - kTrackH) / 2.0 : qreal(index * kTrackH - target));
+    animateBoxTo(index * kTrackH);
 }
 
 void TrackListPopup::paintEvent(QPaintEvent *)
@@ -349,7 +374,7 @@ void TrackListPopup::paintTracks(QPainter &p, const QRect &list)
                        !showBox);
         }
         if (showBox) {
-            const QRect box(list.left(), list.top() + int(std::lround(m_boxY)), list.width(), kTrackH);
+            const QRect box(list.left(), list.top() + int(std::lround(m_boxY)) - m_scroll.offset, list.width(), kTrackH);
             p.setPen(QPen(th().accent, 2));
             p.setBrush(Qt::NoBrush);
             p.drawRoundedRect(QRectF(box).adjusted(1, 1, -7, -1), 6, 6);
@@ -421,7 +446,7 @@ void TrackListPopup::mouseReleaseEvent(QMouseEvent *event)
             m_previewIndex = hit.track;
             update();
         }
-        animateBoxTo(hit.track * kTrackH - m_scroll.offset);
+        animateBoxTo(hit.track * kTrackH);
         return;
     }
     switch (hit.part) {

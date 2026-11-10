@@ -16,6 +16,26 @@ void paintLibraryIcon(QPainter &p, const QColor &color)
     p.drawLine(QPointF(2.5, -6), QPointF(6, 6.5));
 }
 
+void paintFilterIcon(QPainter &p, const QColor &color)
+{
+    p.setPen(QPen(color, 1.8, Qt::SolidLine, Qt::RoundCap));
+    p.drawLine(QPointF(-6.5, -5), QPointF(6.5, -5));
+    p.drawLine(QPointF(-4, 0), QPointF(4, 0));
+    p.drawLine(QPointF(-1.5, 5), QPointF(1.5, 5));
+}
+
+// Top to bottom: the library, its filters right under it, the settings.
+int slot(TabStrip::Tab tab)
+{
+    switch (tab) {
+    case TabStrip::Library: return 0;
+    case TabStrip::Filters: return 1;
+    default: return 2;
+    }
+}
+
+const TabStrip::Tab kTabs[] = { TabStrip::Library, TabStrip::Filters, TabStrip::Settings };
+
 void paintGearIcon(QPainter &p, const QColor &color)
 {
     p.setPen(Qt::NoPen);
@@ -45,15 +65,22 @@ void TabStrip::setCurrent(Tab tab)
     update();
 }
 
+void TabStrip::setFilters(bool open, bool applied)
+{
+    m_filtersOpen = open;
+    m_filterApplied = applied;
+    update();
+}
+
 QRect TabStrip::tabRect(Tab tab) const
 {
     const int x = (int(lw()) - kTabSize) / 2;
-    return QRect(x, kTabTop + int(tab) * (kTabSize + kTabGap), kTabSize, kTabSize);
+    return QRect(x, kTabTop + slot(tab) * (kTabSize + kTabGap), kTabSize, kTabSize);
 }
 
 TabStrip::Tab TabStrip::tabAt(const QPoint &pos) const
 {
-    for (Tab tab : { Library, Settings }) {
+    for (Tab tab : kTabs) {
         if (tabRect(tab).contains(pos))
             return tab;
     }
@@ -69,9 +96,9 @@ void TabStrip::paintEvent(QPaintEvent *)
     p.setPen(QPen(th.line, 1));
     p.drawLine(QPointF(0.5, 12), QPointF(0.5, lh() - 12));
 
-    for (Tab tab : { Library, Settings }) {
+    for (Tab tab : kTabs) {
         const QRectF r = tabRect(tab);
-        const bool active = tab == m_current;
+        const bool active = tab == Filters ? m_filtersOpen : tab == m_current;
         const bool hovered = tab == m_hover;
         if (active || hovered) {
             QColor bg = active ? th.accent : th.hover;
@@ -86,9 +113,16 @@ void TabStrip::paintEvent(QPaintEvent *)
         p.translate(r.center());
         if (tab == Library)
             paintLibraryIcon(p, color);
+        else if (tab == Filters)
+            paintFilterIcon(p, color);
         else
             paintGearIcon(p, color);
         p.restore();
+        if (tab == Filters && m_filterApplied && !m_filtersOpen) {
+            p.setPen(Qt::NoPen);
+            p.setBrush(th.accent);
+            p.drawEllipse(QPointF(r.right() - 4, r.top() + 4), 2.5, 2.5);
+        }
     }
 }
 

@@ -28,7 +28,8 @@ function Find-CMake {
     if ($cmd) { return $cmd.Source }
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
     if (Test-Path $vswhere) {
-        $vs = & $vswhere -latest -products * -property installationPath
+        # Not just the newest VS: it can be installed without C++ and CMake.
+        $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.CMake.Project -property installationPath
         $bundled = Join-Path "$vs" 'Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe'
         if (Test-Path $bundled) { return $bundled }
     }

@@ -3,7 +3,9 @@
 #include "app/Localization.h"
 #include "spotify/SpotifyAuth.h"
 #include "spotify/SpotifyLauncher.h"
+#include "spotify/SpotifyLocalLibrary.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -14,11 +16,15 @@
 #include <QJsonObject>
 #include <QNetworkDiskCache>
 #include <QNetworkReply>
+#include <QPointer>
 #include <QRegularExpression>
+#include <QSet>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QSysInfo>
+#include <QThread>
 #include <QTimer>
+#include <QUrl>
 
 #include <algorithm>
 
@@ -38,7 +44,15 @@ QString recentPath()
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/recent.json";
 }
 
+QString tracklessPath()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/trackless.json";
+}
+
 constexpr int kMaxRecent = 200;
+// Playlists up to this size get one request to see whether they hold any tracks (the API
+// counts podcast episodes and unavailable items too); bigger ones surely do.
+constexpr int kCheckMaxItems = 100;
 
 QString pickImage(const QJsonArray &images)
 {
@@ -114,11 +128,14 @@ void SpotifyClient::onLoggedOut(bool wasConnected)
 {
     m_library.clear();
     m_recent.clear();
+    m_trackless.clear();
+    m_toCheck.clear();
     m_activeUri.clear();
     m_lastContext.clear();
     m_lastTrack.clear();
     QFile::remove(libraryCachePath());
     QFile::remove(recentPath());
+    QFile::remove(tracklessPath());
     QSettings s;
     s.remove("spotify/lastContext");
     s.remove("spotify/lastTrack");
@@ -135,13 +152,21 @@ void SpotifyClient::loadLibraryCache()
             m_recent.append(v.toString());
     }
 
+    QFile checked(tracklessPath());
+    if (checked.open(QIODevice::ReadOnly)) {
+        const QJsonObject o = QJsonDocument::fromJson(checked.readAll()).object();
+        for (auto it = o.begin(); it != o.end(); ++it)
+            m_trackless.insert(it.key(), { it->toObject()["snapshot"].toString(), it->toObject()["empty"].toBool() });
+    }
+
     QFile f(libraryCachePath());
     if (!f.open(QIODevice::ReadOnly))
         return;
     for (const QJsonValue &v : QJsonDocument::fromJson(f.readAll()).array()) {
         const QJsonObject o = v.toObject();
         m_library.append({ LibraryItem::Kind(o["kind"].toInt()), o["uri"].toString(), o["name"].toString(),
-                           o["owner"].toString(), o["image"].toString() });
+                           o["owner"].toString(), o["image"].toString(), o["pin"].toInt(-1),
+                           o["snapshot"].toString(), -1, o["folder"].toString() });
     }
 }
 
@@ -149,8 +174,9 @@ void SpotifyClient::saveLibraryCache() const
 {
     QJsonArray arr;
     for (const LibraryItem &i : m_library) {
-        arr.append(QJsonObject{ { "kind", int(i.kind) }, { "uri", i.uri }, { "name", i.name },
-                                { "owner", i.owner }, { "image", i.imageUrl } });
+        arr.append(QJsonObject{ { "kind", int(i.kind) }, { "uri", i.uri }, { "name", i.name }, { "owner", i.owner },
+                                { "image", i.imageUrl }, { "pin", i.pin }, { "snapshot", i.snapshot },
+                                { "folder", i.folder } });
     }
     QDir().mkpath(QFileInfo(libraryCachePath()).absolutePath());
     QFile f(libraryCachePath());
@@ -172,23 +198,172 @@ void SpotifyClient::bumpRecent(const QString &uri)
     if (f.open(QIODevice::WriteOnly))
         f.write(QJsonDocument(QJsonArray::fromStringList(m_recent)).toJson(QJsonDocument::Compact));
 
-    const auto it = std::find_if(m_library.begin(), m_library.end(),
-                                 [&uri](const LibraryItem &i) { return i.uri == uri; });
-    if (it == m_library.end() || it == m_library.begin())
-        return;
-    m_library.move(int(it - m_library.begin()), 0);
-    saveLibraryCache();
-    emit libraryChanged();
+    QStringList before;
+    for (const LibraryItem &i : m_library)
+        before << i.uri;
+    applyRecentOrder();
+    for (int i = 0; i < m_library.size(); ++i) {
+        if (m_library.at(i).uri != before.at(i)) {
+            saveLibraryCache();
+            emit libraryChanged();
+            return;
+        }
+    }
 }
 
+// Pins first, always in their own order; then the most recently played. A folder ranks as
+// its most recently played playlist.
 void SpotifyClient::applyRecentOrder()
 {
     QHash<QString, int> rank;
     for (int i = 0; i < m_recent.size(); ++i)
         rank.insert(m_recent.at(i), i);
+    QHash<QString, QString> folderParent;
+    for (const LibraryItem &i : std::as_const(m_library)) {
+        if (i.kind == LibraryItem::Folder)
+            folderParent.insert(i.uri, i.folder);
+    }
+    for (const LibraryItem &i : std::as_const(m_library)) {
+        const int r = rank.value(i.uri, kMaxRecent);
+        QString f = i.folder;
+        for (int depth = 0; !f.isEmpty() && i.kind != LibraryItem::Folder && depth < 32; ++depth, f = folderParent.value(f)) {
+            if (r < rank.value(f, kMaxRecent))
+                rank.insert(f, r);
+        }
+    }
     std::stable_sort(m_library.begin(), m_library.end(), [&rank](const LibraryItem &a, const LibraryItem &b) {
+        if ((a.pin >= 0) != (b.pin >= 0))
+            return a.pin >= 0;
+        if (a.pin >= 0)
+            return a.pin < b.pin;
         return rank.value(a.uri, kMaxRecent) < rank.value(b.uri, kMaxRecent);
     });
+}
+
+bool SpotifyClient::isTrackless(const LibraryItem &item) const
+{
+    if (item.kind != LibraryItem::Playlist)
+        return false;
+    if (item.total == 0)
+        return true;
+    const auto it = m_trackless.constFind(item.uri);
+    return it != m_trackless.cend() && it->first == item.snapshot && it->second;
+}
+
+// One playlist at a time, only those not checked at their current snapshot yet.
+void SpotifyClient::checkTrackless()
+{
+    while (!m_toCheck.isEmpty()) {
+        const QString uri = m_toCheck.takeFirst();
+        const auto it = std::find_if(m_library.cbegin(), m_library.cend(),
+                                     [&uri](const LibraryItem &i) { return i.uri == uri; });
+        if (it == m_library.cend())
+            continue;
+        const QString snapshot = it->snapshot;
+        fetchTrackPage("/playlists/" + uri.section(':', -1) + "/items?limit=" + QString::number(kCheckMaxItems), {},
+                       [this, uri, snapshot](QList<Track> tracks, int status) {
+                           if (status == 403 || status == 404) { // not readable here: leave it shown
+                               m_trackless.insert(uri, { snapshot, false });
+                               saveTrackless();
+                           } else if (status == 200) {
+                               m_trackless.insert(uri, { snapshot, tracks.isEmpty() });
+                               saveTrackless();
+                               if (tracks.isEmpty()) {
+                                   m_library.erase(std::remove_if(m_library.begin(), m_library.end(),
+                                                                  [&uri](const LibraryItem &i) { return i.uri == uri; }),
+                                                   m_library.end());
+                                   pruneFolders();
+                                   saveLibraryCache();
+                                   emit libraryChanged();
+                               }
+                           }
+                           if (status != 0)
+                               checkTrackless();
+                       });
+        return;
+    }
+}
+
+void SpotifyClient::saveTrackless() const
+{
+    QJsonObject o;
+    for (auto it = m_trackless.cbegin(); it != m_trackless.cend(); ++it)
+        o.insert(it.key(), QJsonObject{ { "snapshot", it->first }, { "empty", it->second } });
+    QDir().mkpath(QFileInfo(tracklessPath()).absolutePath());
+    QFile f(tracklessPath());
+    if (f.open(QIODevice::WriteOnly))
+        f.write(QJsonDocument(o).toJson(QJsonDocument::Compact));
+}
+
+void SpotifyClient::readLocalLibrary()
+{
+    const QString userId = m_userId;
+    QPointer<SpotifyClient> self(this);
+    QThread *thread = QThread::create([self, userId] {
+        const SpotifyLocalLibrary::Data data = SpotifyLocalLibrary::read(userId);
+        QMetaObject::invokeMethod(qApp, [self, userId, data] {
+            if (self && data.found && self->m_userId == userId)
+                self->applyLocalLibrary(data.pinned, data.rootlist);
+        });
+    });
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    thread->start(QThread::LowPriority);
+}
+
+// Pins and folders go onto the items: a refresh from the Web API, which knows neither,
+// carries them over until the cache is read again.
+void SpotifyClient::applyLocalLibrary(const QStringList &pinned, const QStringList &rootlist)
+{
+    const QString collection = "spotify:user:" + m_userId + ":collection";
+    QList<LibraryItem> folders;
+    QHash<QString, QString> parent;
+    QStringList open;
+    for (const QString &uri : rootlist) {
+        if (uri.startsWith(QLatin1String("spotify:start-group:"))) {
+            // spotify:start-group:<id>:<url-encoded name>
+            const QString rest = uri.mid(int(qstrlen("spotify:start-group:")));
+            QString name = rest.section(':', 1);
+            name = QUrl::fromPercentEncoding(name.replace('+', ' ').toUtf8());
+            const QString folder = "spotify:user:" + m_userId + ":folder:" + rest.section(':', 0, 0);
+            folders.append({ LibraryItem::Folder, folder, name, {}, {}, -1, {}, -1, open.isEmpty() ? QString() : open.last() });
+            open.append(folder);
+        } else if (uri.startsWith(QLatin1String("spotify:end-group:"))) {
+            if (!open.isEmpty())
+                open.removeLast();
+        } else if (!open.isEmpty()) {
+            parent.insert(uri, open.last());
+        }
+    }
+
+    m_library.erase(std::remove_if(m_library.begin(), m_library.end(),
+                                   [](const LibraryItem &i) { return i.kind == LibraryItem::Folder; }),
+                    m_library.end());
+    m_library += folders;
+    for (LibraryItem &i : m_library) {
+        const QString key = i.uri == collection ? QStringLiteral("spotify:collection") : i.uri;
+        i.pin = int(pinned.indexOf(key));
+        if (i.kind != LibraryItem::Folder)
+            i.folder = parent.value(i.uri);
+    }
+    pruneFolders();
+    applyRecentOrder();
+    saveLibraryCache();
+    emit libraryChanged();
+}
+
+// Folders whose playlists all got hidden (or never were in the library) go too.
+void SpotifyClient::pruneFolders()
+{
+    for (bool removed = true; removed;) {
+        QSet<QString> used;
+        for (const LibraryItem &i : std::as_const(m_library))
+            used.insert(i.folder);
+        const auto end = std::remove_if(m_library.begin(), m_library.end(), [&used](const LibraryItem &i) {
+            return i.kind == LibraryItem::Folder && !used.contains(i.uri);
+        });
+        removed = end != m_library.end();
+        m_library.erase(end, m_library.end());
+    }
 }
 
 void SpotifyClient::request(const QByteArray &verb, const QString &path, const QByteArray &body, Reply done, int attempt)
@@ -277,10 +452,39 @@ void SpotifyClient::refreshLibrary()
                               if (!m_userId.isEmpty())
                                   all.append({ LibraryItem::Liked, "spotify:user:" + m_userId + ":collection",
                                                tr("Улюблені треки"), {}, {} });
-                              m_library = all + playlists + albums + artists;
+                              m_toCheck.clear();
+                              for (const LibraryItem &p : playlists) {
+                                  if (isTrackless(p))
+                                      continue;
+                                  all.append(p);
+                                  const auto checked = m_trackless.constFind(p.uri);
+                                  if (p.total > 0 && p.total <= kCheckMaxItems
+                                      && (checked == m_trackless.cend() || checked->first != p.snapshot))
+                                      m_toCheck.append(p.uri);
+                              }
+                              // pins and folders: kept until the cache is read again
+                              QHash<QString, LibraryItem> old;
+                              QList<LibraryItem> folders;
+                              for (const LibraryItem &i : std::as_const(m_library)) {
+                                  old.insert(i.uri, i);
+                                  if (i.kind == LibraryItem::Folder)
+                                      folders.append(i);
+                              }
+                              m_library = all + albums + artists;
+                              for (LibraryItem &i : m_library) {
+                                  const auto it = old.constFind(i.uri);
+                                  if (it != old.cend()) {
+                                      i.pin = it->pin;
+                                      i.folder = it->folder;
+                                  }
+                              }
+                              m_library += folders;
+                              pruneFolders();
                               applyRecentOrder();
                               saveLibraryCache();
                               finish();
+                              readLocalLibrary();
+                              checkTrackless();
                           });
             });
         });
@@ -310,16 +514,22 @@ void SpotifyClient::fetchPage(const QString &path, LibraryItem::Kind kind, QList
                                    artistNames(album["artists"].toArray()), pickImage(album["images"].toArray()) });
                 break;
             }
-            case LibraryItem::Playlist:
-                if (!o.isEmpty())
-                    collected.append({ kind, o["uri"].toString(), o["name"].toString(),
-                                       o["owner"].toObject()["display_name"].toString(),
-                                       pickImage(o["images"].toArray()) });
+            case LibraryItem::Playlist: {
+                if (o.isEmpty())
+                    break;
+                // newer API versions renamed "tracks" to "items"
+                const QJsonObject count = o[o.contains("items") ? "items" : "tracks"].toObject();
+                collected.append({ kind, o["uri"].toString(), o["name"].toString(),
+                                   o["owner"].toObject()["display_name"].toString(), pickImage(o["images"].toArray()),
+                                   -1, o["snapshot_id"].toString(),
+                                   count.contains("total") ? count["total"].toInt() : -1 });
                 break;
+            }
             case LibraryItem::Artist:
                 collected.append({ kind, o["uri"].toString(), o["name"].toString(), {}, pickImage(o["images"].toArray()) });
                 break;
             case LibraryItem::Liked:
+            case LibraryItem::Folder:
                 break;
             }
         }
@@ -340,6 +550,7 @@ void SpotifyClient::fetchTracks(const LibraryItem &item, std::function<void(cons
     case LibraryItem::Album: path = "/albums/" + id + "/tracks?limit=50"; break;
     case LibraryItem::Playlist: path = "/playlists/" + id + "/tracks?limit=100"; break;
     case LibraryItem::Artist: path = "/artists/" + id + "/top-tracks"; break;
+    case LibraryItem::Folder: done({}, false); return;
     }
     fetchTrackPage(path, {}, [=](QList<Track> tracks, int status) {
         if (status != 200 && status != 0 && item.kind == LibraryItem::Playlist && tracks.isEmpty()) {
@@ -369,7 +580,8 @@ void SpotifyClient::fetchTrackPage(const QString &path, QList<Track> collected,
                 t = t["track"].toObject();
             else if (t["item"].isObject())
                 t = t["item"].toObject();
-            if (t.isEmpty() || (t.contains("type") && t["type"].toString() != "track"))
+            // episodes come as an empty wrapper unless asked for: no uri, skip it like any non-track
+            if (t["uri"].toString().isEmpty() || (t.contains("type") && t["type"].toString() != "track"))
                 continue;
             collected.append({ t["uri"].toString(), t["name"].toString(), artistNames(t["artists"].toArray()),
                                qint64(t["duration_ms"].toDouble()), pickImage(t["album"].toObject()["images"].toArray()) });

@@ -139,6 +139,7 @@ src/
 | `spotify` | `SpotifyAuth` | вхід OAuth PKCE, токени (`SecretStore`) |
 | `spotify` | `SpotifyClient` | Spotify Web API: бібліотека, треки, відтворення |
 | `spotify` | `SpotifyLauncher` | тихий запуск десктопного Spotify (стан «запускаю…») |
+| `spotify` | `SpotifyLocalLibrary` | закріплені й папки «Моєї бібліотеки»: читає LevelDB-кеш десктопного Spotify (Web API їх не віддає) |
 | `platform` | `LocalPlayer` | Spotify на цьому комп'ютері: Windows — медіасесії (GSMTC), macOS — AppleScript Spotify, Linux — MPRIS |
 | `platform` | `WindowLayer` | шар вікна: під / поверх вікон / поверх усього; Windows — Win32 + повний екран, macOS — рівні NSWindow, Linux — «поверх» X11 |
 | `platform` | `SecretStore` | секрети: Windows — DPAPI у QSettings, macOS — Keychain, Linux — Secret Service (libsecret) |

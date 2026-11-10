@@ -38,6 +38,8 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
               const RowState &state);
 void paintTrack(QPainter &p, const QFont &base, const QRect &row, const QImage &cover, const Track &track,
                 bool hovered, bool current, bool playing, bool drawBorder = true);
+// "‹ Title", thin; the arrow only when there is somewhere to go back to.
+void paintHeader(QPainter &p, const QFont &base, const QRect &r, const QString &title, bool back, bool hovered);
 void paintScrollbar(QPainter &p, const QRectF &track, int contentH, int scroll, int maxScroll);
 void paintEdgeFades(QPainter &p, const QRectF &area, int scroll, int maxScroll);
 QString formatTime(qint64 ms);

@@ -4,6 +4,7 @@
 #include "device/DeviceController.h"
 #include "spotify/SpotifyLauncher.h"
 #include "ui/ErrorToasts.h"
+#include "ui/library/LibraryCard.h"
 #include "ui/library/LibraryView.h"
 #include "playback/MediaController.h"
 #include "ui/PanelLayout.h"
@@ -34,6 +35,7 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     , m_player(new PlayerView(media, m_covers, this))
     , m_library(new LibraryView(spotify, m_covers, this))
     , m_tracks(new TrackListPopup(spotify, m_covers, parent ? parent->window() : nullptr))
+    , m_card(new LibraryCard(parent ? parent->window() : nullptr))
     , m_scrubPopup(new PlaylistScrubPopup(m_covers, parent ? parent->window() : nullptr))
     , m_tabs(new TabStrip(this))
     , m_settingsHost(new QWidget(this))
@@ -58,6 +60,13 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     });
     connect(m_settings, &SettingsPage::backRequested, this, &PanelContent::closeSettings);
     connect(m_tabs, &TabStrip::tabClicked, this, [this](TabStrip::Tab tab) {
+        if (tab == TabStrip::Filters) {
+            const bool open = !m_card->filtersOpen() || m_settingsOpen;
+            closeSettings();
+            m_card->setFiltersOpen(open);
+            m_tabs->setFilters(open, m_library->filter() != LibraryView::Filter::All);
+            return;
+        }
         if (tab == TabStrip::Settings && !m_settingsOpen)
             openSettings();
         else
@@ -82,12 +91,44 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     auto *volumeOverlay = new VolumeOverlay(parent ? parent->window() : nullptr);
     connect(device, &DeviceController::spotifyVolumeChanged, volumeOverlay, &VolumeOverlay::showLevel);
 
+    auto updateContextName = [this] {
+        const auto &lib = m_spotify->library();
+        const auto it = std::find_if(lib.begin(), lib.end(),
+                                     [this](const LibraryItem &i) { return i.uri == m_spotify->activeUri(); });
+        m_player->setContextName(m_spotify->activeUri().isEmpty() || it == lib.end() ? QString() : it->name);
+    };
+    connect(spotify, &SpotifyClient::activeChanged, this, updateContextName);
+    connect(spotify, &SpotifyClient::libraryChanged, this, updateContextName);
+    updateContextName();
+    connect(m_player, &PlayerView::contextClicked, this, [this] {
+        const QString uri = m_spotify->activeUri();
+        closeSettings();
+        if (m_library->reveal(uri))
+            m_tracks->revealNowPlaying(uri);
+    });
+
     connect(m_library, &LibraryView::togglePlayRequested, media, &MediaController::togglePlayPause);
     connect(m_library, &LibraryView::detailOpened, this, [this](const LibraryItem &item, int rowTop) {
         updatePopupAnchor();
         m_tracks->open(item, rowTop);
+        m_detailOpen = true;
+        updateCard();
     });
     connect(m_library, &LibraryView::detailClosed, m_tracks, &TrackListPopup::close);
+    connect(m_library, &LibraryView::detailClosed, this, [this] {
+        m_detailOpen = false;
+        updateCard();
+    });
+
+    connect(m_library, &LibraryView::pageChanged, this, [this] { m_card->setTitle(m_library->folderTitle()); });
+    connect(m_library, &LibraryView::filterChanged, this, [this] {
+        m_card->setFilter(m_library->filter());
+        m_tabs->setFilters(m_card->filtersOpen(), m_library->filter() != LibraryView::Filter::All);
+    });
+    connect(m_card, &LibraryCard::backClicked, m_library, &LibraryView::goBack);
+    connect(m_card, &LibraryCard::filterClicked, this, [this](LibraryView::Filter filter) {
+        m_library->setFilter(m_library->filter() == filter ? LibraryView::Filter::All : filter);
+    });
     connect(m_tracks, &TrackListPopup::closeRequested, m_library, [this] { m_library->closeDetail(); });
     connect(m_tracks, &TrackListPopup::togglePlayRequested, media, &MediaController::togglePlayPause);
 
@@ -141,6 +182,7 @@ void PanelContent::updatePopupAnchor()
 {
     const QRect column(m_library->mapToGlobal(QPoint(0, 0)), m_library->size());
     m_tracks->setArea(column, mapToGlobal(QPoint(0, 0)).y(), mapToGlobal(QPoint(0, height())).y());
+    m_card->setArea(column, mapToGlobal(QPoint(0, 0)).y(), mapToGlobal(QPoint(0, height())).y());
     m_scrubPopup->setAnchor(QRect(window()->mapToGlobal(QPoint(0, 0)), window()->size()),
                             AppSettings::instance().rightSide(), isVisible());
 }
@@ -150,10 +192,24 @@ void PanelContent::closeTrackList(bool fadeHeader)
     m_library->closeDetail(fadeHeader);
 }
 
+void PanelContent::setExpanded(bool expanded)
+{
+    m_expanded = expanded;
+    updateCard();
+}
+
+// Folder name and filters stay as they are; the card just steps away while something
+// covers its spot or the panel is collapsed.
+void PanelContent::updateCard()
+{
+    m_card->setSuppressed(!m_expanded || m_settingsOpen || m_detailOpen);
+}
+
 void PanelContent::openSettings()
 {
     closeTrackList(true);
     m_settingsOpen = true;
+    updateCard();
     m_tabs->setCurrent(TabStrip::Settings);
     layoutChildren();
     m_settings->move(m_settingsHost->width(), 0);
@@ -171,6 +227,7 @@ void PanelContent::closeSettings()
     if (!m_settingsOpen)
         return;
     m_settingsOpen = false;
+    updateCard();
     m_tabs->setCurrent(TabStrip::Library);
     m_settingsAnim.stop();
     m_settingsAnim.setStartValue(1.0 - qreal(m_settings->x()) / std::max(1, m_settingsHost->width()));

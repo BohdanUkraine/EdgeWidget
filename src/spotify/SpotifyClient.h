@@ -3,6 +3,7 @@
 #include "app/MediaState.h"
 
 #include <QElapsedTimer>
+#include <QHash>
 #include <QTimer>
 #include <QImage>
 #include <QList>
@@ -16,13 +17,17 @@ class SpotifyAuth;
 
 struct LibraryItem
 {
-    enum Kind { Liked, Playlist, Album, Artist };
+    enum Kind { Liked, Playlist, Album, Artist, Folder }; // stored as numbers: append only
 
     Kind kind = Album;
     QString uri;
     QString name;
     QString owner;
     QString imageUrl;
+    int pin = -1;         // place among the pins of the desktop app's "Your Library"; -1 not pinned
+    QString snapshot;     // playlists: changes whenever the contents do
+    int total = -1;       // playlists: items, tracks or not; -1 unknown
+    QString folder;       // uri of the folder it sits in (desktop app's library); empty: top level
 };
 
 struct Track
@@ -87,12 +92,20 @@ private:
     void saveLibraryCache() const;
     void bumpRecent(const QString &uri);
     void applyRecentOrder();
+    bool isTrackless(const LibraryItem &item) const;
+    void checkTrackless();
+    void saveTrackless() const;
+    void readLocalLibrary();
+    void applyLocalLibrary(const QStringList &pinned, const QStringList &rootlist);
+    void pruneFolders();
 
     QNetworkAccessManager m_nam;
     SpotifyAuth *m_auth;
 
     QList<LibraryItem> m_library;
     QStringList m_recent;
+    QHash<QString, QPair<QString, bool>> m_trackless; // playlist uri -> snapshot checked, no tracks in it
+    QStringList m_toCheck;
     bool m_loading = false;
     QString m_activeUri;
     QString m_lastContext;
