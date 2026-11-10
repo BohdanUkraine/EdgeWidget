@@ -416,6 +416,44 @@ void SpotifyClient::fetchImage(const QString &url, QObject *context, std::functi
     });
 }
 
+void SpotifyClient::fetchItem(const QString &uri, std::function<void(const LibraryItem &item)> done)
+{
+    const auto it = std::find_if(m_library.begin(), m_library.end(), [&](const LibraryItem &i) { return i.uri == uri; });
+    if (it != m_library.end()) {
+        done(*it);
+        return;
+    }
+    static const QHash<QString, LibraryItem::Kind> kinds = {
+        { "playlist", LibraryItem::Playlist }, { "album", LibraryItem::Album }, { "artist", LibraryItem::Artist }
+    };
+    const QString type = uri.section(':', 1, 1);
+    const QString id = uri.section(':', 2, 2);
+    if (!uri.startsWith(QLatin1String("spotify:")) || !kinds.contains(type) || id.isEmpty()) {
+        done({});
+        return;
+    }
+    QString path = "/" + type + "s/" + id;
+    if (type == QLatin1String("playlist"))
+        path += "?fields=name,images,owner(display_name)";
+    request("GET", path, {}, [uri, kind = kinds.value(type), done](int status, const QByteArray &body) {
+        if (status != 200) {
+            done({});
+            return;
+        }
+        const QJsonObject o = QJsonDocument::fromJson(body).object();
+        LibraryItem item;
+        item.kind = kind;
+        item.uri = uri;
+        item.name = o["name"].toString();
+        item.imageUrl = pickImage(o["images"].toArray());
+        if (kind == LibraryItem::Playlist)
+            item.owner = o["owner"].toObject()["display_name"].toString();
+        else if (kind == LibraryItem::Album)
+            item.owner = artistNames(o["artists"].toArray());
+        done(item);
+    });
+}
+
 void SpotifyClient::refreshLibrary()
 {
     if (!isConnected() || m_loading)

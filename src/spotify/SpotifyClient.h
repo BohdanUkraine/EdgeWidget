@@ -59,6 +59,8 @@ public:
     void refreshLibrary();
     void fetchTracks(const LibraryItem &item, std::function<void(const QList<Track> &tracks, bool ok)> done);
     void fetchImage(const QString &url, QObject *context, std::function<void(const QImage &)> done);
+    // From the library, else from the API; an empty uri when neither knows it.
+    void fetchItem(const QString &uri, std::function<void(const LibraryItem &item)> done);
 
     QString activeUri() const { return m_activeUri; }
     void updateNowPlaying(const QString &currentTitle = {});

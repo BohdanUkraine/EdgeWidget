@@ -203,6 +203,7 @@ void DeviceController::handle(const MediaSpin::Message &message)
             m_pendingFromMs = state.positionNow();
             m_pendingTimeout.start();
             m_spotify->play(context);
+            emit recordPlayed(context, color);
         } else {
             m_pendingColor.reset();
             m_pendingTimeout.stop();

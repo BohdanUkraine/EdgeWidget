@@ -32,6 +32,7 @@ public:
 signals:
     void connectedChanged(bool connected);
     void recordColorChanged(const QColor &color);
+    void recordPlayed(const QString &contextUri, const QColor &color); // a record put on the player starts
     void deviceError(const QString &message);
     void playlistScrubMoved(const QList<Track> &tracks, int index);
     void playlistScrubEnded();

@@ -23,6 +23,7 @@ const QList<QPair<const char *, const char *>> kEnglish = {
     { "Виконавець", "Artist" },
     { "Папка", "Folder" },
     { "Прев'ю плейлиста", "Playlist preview" },
+    { "Зараз грає", "Now playing" },
     { "На цьому ПК немає Bluetooth — програвач не підключиться", "This PC has no Bluetooth — the player can't connect" },
     { "Bluetooth цього ПК не підтримує Bluetooth LE — потрібен адаптер Bluetooth 4.0+",
       "This PC's Bluetooth doesn't support Bluetooth LE — a Bluetooth 4.0+ adapter is needed" },

@@ -28,6 +28,7 @@ QPainterPath artPath(const QRectF &r, const LibraryItem &item)
         path.addRoundedRect(r, 4, 4);
     return path;
 }
+}
 
 void paintArt(QPainter &p, const QFont &base, const QRectF &r, const LibraryItem &item, const QImage &cover)
 {
@@ -86,6 +87,7 @@ void paintArt(QPainter &p, const QFont &base, const QRectF &r, const LibraryItem
     p.drawText(r, Qt::AlignCenter, QStringLiteral("♪"));
 }
 
+namespace {
 void paintNfcButton(QPainter &p, const QRect &r, bool hovered)
 {
     const QColor color = hovered ? th().accent : th().subText;
@@ -115,6 +117,24 @@ void paintNfcButton(QPainter &p, const QRect &r, bool hovered)
     }
     p.restore();
 }
+}
+
+QString itemName(const LibraryItem &item)
+{
+    return item.kind == LibraryItem::Liked ? QObject::tr("Улюблені треки") : item.name;
+}
+
+QString itemSubtitle(const LibraryItem &item)
+{
+    QString kind;
+    switch (item.kind) {
+    case LibraryItem::Liked:
+    case LibraryItem::Playlist: kind = QObject::tr("Плейлист"); break;
+    case LibraryItem::Album: kind = QObject::tr("Альбом"); break;
+    case LibraryItem::Artist: kind = QObject::tr("Виконавець"); break;
+    case LibraryItem::Folder: kind = QObject::tr("Папка"); break;
+    }
+    return item.owner.isEmpty() ? kind : kind + QStringLiteral(" • ") + item.owner;
 }
 
 QRectF artRect(const QRect &row)
@@ -192,19 +212,11 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
     QFont sub = base;
     sub.setPixelSize(11);
 
-    QString kind;
-    switch (item.kind) {
-    case LibraryItem::Liked:
-    case LibraryItem::Playlist: kind = QObject::tr("Плейлист"); break;
-    case LibraryItem::Album: kind = QObject::tr("Альбом"); break;
-    case LibraryItem::Artist: kind = QObject::tr("Виконавець"); break;
-    case LibraryItem::Folder: kind = QObject::tr("Папка"); break;
-    }
-    const QString subtitle = item.owner.isEmpty() ? kind : kind + QStringLiteral(" • ") + item.owner;
+    const QString subtitle = itemSubtitle(item);
 
     p.setFont(title);
     p.setPen(state.active ? th().accent : th().text);
-    const QString name = item.kind == LibraryItem::Liked ? QObject::tr("Улюблені треки") : item.name;
+    const QString name = itemName(item);
     p.drawText(QRect(textX, row.y() + 4, textW, 19), Qt::AlignLeft | Qt::AlignVCenter,
                QFontMetrics(title).elidedText(name, Qt::ElideRight, textW));
     // Pinned: a pin in the accent colour before the subtitle, as Spotify shows it.

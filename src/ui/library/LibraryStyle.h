@@ -22,6 +22,11 @@ inline Theme th() { return Theme::current(); }
 
 enum class RowPart { None, Art, Text, Nfc };
 
+QString itemName(const LibraryItem &item);
+QString itemSubtitle(const LibraryItem &item); // "Плейлист • owner"
+// Cover, or Liked's heart, or a placeholder; artists round.
+void paintArt(QPainter &p, const QFont &base, const QRectF &r, const LibraryItem &item, const QImage &cover);
+
 QRectF artRect(const QRect &row);
 QRect nfcRect(const QRect &row);
 RowPart partAt(const QRect &row, const QPoint &pos);

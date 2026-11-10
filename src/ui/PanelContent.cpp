@@ -7,6 +7,7 @@
 #include "ui/library/LibraryCard.h"
 #include "ui/library/LibraryView.h"
 #include "playback/MediaController.h"
+#include "ui/NowPlayingPopup.h"
 #include "ui/PanelLayout.h"
 #include "ui/PlayerView.h"
 #include "ui/PlaylistScrubPopup.h"
@@ -37,6 +38,7 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
     , m_tracks(new TrackListPopup(spotify, m_covers, parent ? parent->window() : nullptr))
     , m_card(new LibraryCard(parent ? parent->window() : nullptr))
     , m_scrubPopup(new PlaylistScrubPopup(m_covers, parent ? parent->window() : nullptr))
+    , m_nowPlaying(new NowPlayingPopup(spotify, m_covers, parent ? parent->window() : nullptr))
     , m_tabs(new TabStrip(this))
     , m_settingsHost(new QWidget(this))
     , m_settings(new SettingsPage(spotify, device, m_settingsHost))
@@ -88,6 +90,10 @@ PanelContent::PanelContent(MediaController *media, SpotifyClient *spotify, Devic
         }
     });
     connect(device, &DeviceController::playlistScrubEnded, this, [this] { m_scrubPopup->hidePreview(); });
+    connect(device, &DeviceController::recordPlayed, this, [this](const QString &uri, const QColor &color) {
+        if (!m_expanded && m_spotify->isConnected())
+            m_nowPlaying->showRecord(uri, color);
+    });
     auto *volumeOverlay = new VolumeOverlay(parent ? parent->window() : nullptr);
     connect(device, &DeviceController::spotifyVolumeChanged, volumeOverlay, &VolumeOverlay::showLevel);
 
@@ -195,6 +201,8 @@ void PanelContent::closeTrackList(bool fadeHeader)
 void PanelContent::setExpanded(bool expanded)
 {
     m_expanded = expanded;
+    if (expanded)
+        m_nowPlaying->dismiss();
     updateCard();
 }
 

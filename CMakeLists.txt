@@ -42,6 +42,7 @@ qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/ui/ErrorToasts.cpp src/ui/ErrorToasts.h
     src/ui/PanelContent.cpp src/ui/PanelContent.h
     src/ui/PanelLayout.h
+    src/ui/NowPlayingPopup.cpp src/ui/NowPlayingPopup.h
     src/ui/PlaylistScrubPopup.cpp src/ui/PlaylistScrubPopup.h
     src/ui/ScaledWidget.h
     src/ui/PlayerView.cpp src/ui/PlayerView.h

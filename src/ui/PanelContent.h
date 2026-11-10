@@ -9,6 +9,7 @@ class ErrorToasts;
 class LibraryCard;
 class LibraryView;
 class MediaController;
+class NowPlayingPopup;
 class PlayerView;
 class PlaylistScrubPopup;
 class SettingsPage;
@@ -43,6 +44,7 @@ private:
     TrackListPopup *m_tracks;
     LibraryCard *m_card;
     PlaylistScrubPopup *m_scrubPopup;
+    NowPlayingPopup *m_nowPlaying;
     TabStrip *m_tabs;
     QWidget *m_settingsHost;
     SettingsPage *m_settings;
