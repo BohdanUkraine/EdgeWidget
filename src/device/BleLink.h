@@ -3,7 +3,6 @@
 #include "device/MediaSpinProtocol.h"
 
 #include <QBluetoothDeviceInfo>
-#include <QElapsedTimer>
 #include <QList>
 #include <QLowEnergyCharacteristic>
 #include <QObject>
@@ -28,7 +27,7 @@ public:
 signals:
     void connectedChanged(bool connected);
     void messageReceived(const MediaSpin::Message &message);
-    void problem(const QString &message); // this computer's Bluetooth can't reach the player
+    void problem(const QString &message); // this computer's Bluetooth can't reach the player; once
 
 private:
     void checkAdapter();
@@ -48,7 +47,6 @@ private:
     QTimer m_retry;
     QTimer m_connectTimeout;
     bool m_ready = false;
-    QElapsedTimer m_sinceCheck;
 
     QList<MediaSpin::Message> m_queue;
     bool m_inFlight = false;

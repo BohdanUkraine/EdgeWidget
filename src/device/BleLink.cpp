@@ -24,8 +24,7 @@ constexpr int kRetryMs = 2000;
 constexpr int kNoAdapterMs = 10000;
 constexpr int kAckMs = 600;
 constexpr int kMaxTries = 4;
-constexpr int kConnectMs = 10000;      // connected and notifying by then, or start over
-constexpr qint64 kRecheckMs = 60000;   // adapter check again on a scan error, at most this often
+constexpr int kConnectMs = 10000; // connected and notifying by then, or start over
 }
 
 BleLink::BleLink(QObject *parent)
@@ -43,8 +42,6 @@ BleLink::BleLink(QObject *parent)
     });
     connect(m_agent, &QBluetoothDeviceDiscoveryAgent::errorOccurred, this, [this](QBluetoothDeviceDiscoveryAgent::Error error) {
         qDebug() << "[device] BLE scan error:" << error << m_agent->errorString();
-        if (!m_sinceCheck.isValid() || m_sinceCheck.elapsed() > kRecheckMs)
-            checkAdapter();
         if (!m_controller)
             m_retry.start(kNoAdapterMs);
     });
@@ -57,11 +54,10 @@ BleLink::BleLink(QObject *parent)
         qDebug() << "[device] BLE: not ready after" << kConnectMs << "ms - starting over";
         drop(kRetryMs);
     });
-    QTimer::singleShot(0, this, &BleLink::checkAdapter); // once the owner listens
     m_ackTimer.setSingleShot(true);
     m_ackTimer.setInterval(kAckMs);
     connect(&m_ackTimer, &QTimer::timeout, this, &BleLink::onAckTimeout);
-    scan();
+    QTimer::singleShot(0, this, &BleLink::checkAdapter); // once the owner listens; it starts the scan
 }
 
 BleLink::~BleLink()
@@ -70,10 +66,10 @@ BleLink::~BleLink()
         m_controller->disconnectFromDevice();
 }
 
-// Otherwise the scan just finds nothing, forever, without a word.
+// Once, at start: said once, and without Bluetooth LE there is no scanning at all, the widget
+// is then just a player. A radio that is off may come on, so the scan runs anyway.
 void BleLink::checkAdapter()
 {
-    m_sinceCheck.start();
     QPointer<BleLink> self(this);
     QThread *thread = QThread::create([self] {
         const BluetoothSupport::State state = BluetoothSupport::check();
@@ -84,10 +80,10 @@ void BleLink::checkAdapter()
             switch (state) {
             case BluetoothSupport::State::NoAdapter:
                 emit self->problem(tr("На цьому ПК немає Bluetooth — програвач не підключиться"));
-                break;
+                return;
             case BluetoothSupport::State::NoLowEnergy:
                 emit self->problem(tr("Bluetooth цього ПК не підтримує Bluetooth LE — потрібен адаптер Bluetooth 4.0+"));
-                break;
+                return;
             case BluetoothSupport::State::Off:
                 emit self->problem(tr("Bluetooth вимкнено — увімкни його, щоб підключити програвач"));
                 break;
@@ -95,6 +91,7 @@ void BleLink::checkAdapter()
             case BluetoothSupport::State::Unknown:
                 break;
             }
+            self->scan();
         });
     });
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
