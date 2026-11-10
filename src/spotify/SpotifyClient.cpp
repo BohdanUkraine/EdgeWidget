@@ -773,6 +773,62 @@ void SpotifyClient::playerCommand(const QByteArray &verb, const QString &path)
     });
 }
 
+// This PC's Spotify among the devices: by name, or the only computer there is while Spotify
+// runs here. Never someone else's laptop.
+QJsonObject SpotifyClient::localDevice(const QJsonArray &devices)
+{
+    QList<QJsonObject> computers;
+    for (const QJsonValue &v : devices) {
+        const QJsonObject d = v.toObject();
+        if (d["type"].toString() != "Computer")
+            continue;
+        if (d["name"].toString().compare(QSysInfo::machineHostName(), Qt::CaseInsensitive) == 0)
+            return d;
+        computers.append(d);
+    }
+    return computers.size() == 1 && SpotifyLauncher::isRunning() ? computers.first() : QJsonObject();
+}
+
+void SpotifyClient::transferHere(bool play, std::function<void(bool)> done, int attempt)
+{
+    request("GET", "/me/player/devices", {}, [this, play, done, attempt](int status, const QByteArray &reply) {
+        const QJsonObject local =
+            status == 200 ? localDevice(QJsonDocument::fromJson(reply).object()["devices"].toArray()) : QJsonObject();
+        if (status == 200 && local.isEmpty()) {
+            if (attempt == 0 && !SpotifyLauncher::instance().launch()) {
+                done(false);
+                return;
+            }
+            if (attempt < kDeviceWaitAttempts) {
+                QTimer::singleShot(1000, this, [this, play, done, attempt] { transferHere(play, done, attempt + 1); });
+                return;
+            }
+        }
+        if (attempt > 0)
+            SpotifyLauncher::instance().finished();
+        if (local.isEmpty()) {
+            done(false);
+            return;
+        }
+        const QString id = local["id"].toString();
+        if (local["is_active"].toBool()) {
+            m_volumeDevice = id;
+            done(true);
+            return;
+        }
+        qInfo().noquote() << "[spotify] playback moves to this computer:" << local["name"].toString();
+        request("PUT", "/me/player", json({ { "device_ids", QJsonArray{ id } }, { "play", play } }),
+                [this, id, done](int st, const QByteArray &r) {
+                    const bool ok = st > 0 && st < 300;
+                    if (ok)
+                        m_volumeDevice = id;
+                    else if (st != 0)
+                        emit error(apiError(st, r));
+                    done(ok);
+                });
+    });
+}
+
 // Nothing active (paused for a while): this computer's Spotify is made active, without playing.
 void SpotifyClient::fetchVolume(std::function<void(int)> done)
 {
@@ -785,19 +841,7 @@ void SpotifyClient::fetchVolume(std::function<void(int)> done)
             return;
         }
         request("GET", "/me/player/devices", {}, [this, done](int st, const QByteArray &reply) {
-            // This PC by name, or the only computer there is: never wake someone else's laptop.
-            QList<QJsonObject> computers;
-            QJsonObject local;
-            for (const QJsonValue &v : QJsonDocument::fromJson(reply).object()["devices"].toArray()) {
-                const QJsonObject d = v.toObject();
-                if (d["type"].toString() != "Computer")
-                    continue;
-                computers.append(d);
-                if (d["name"].toString().compare(QSysInfo::machineHostName(), Qt::CaseInsensitive) == 0)
-                    local = d;
-            }
-            if (local.isEmpty() && computers.size() == 1)
-                local = computers.first();
+            const QJsonObject local = localDevice(QJsonDocument::fromJson(reply).object()["devices"].toArray());
             const QJsonValue volume = local["volume_percent"];
             if (st != 200 || !volume.isDouble()) {
                 done(-1);

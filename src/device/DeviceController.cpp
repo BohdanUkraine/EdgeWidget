@@ -6,6 +6,7 @@
 #include "playback/VolumeController.h"
 
 #include <QDebug>
+#include <QSysInfo>
 
 #include <algorithm>
 #include <cmath>
@@ -18,6 +19,7 @@ constexpr qint64 kEchoMs = 2000;
 constexpr qint64 kSeekJumpMs = 2500;
 constexpr qint64 kAnnounceMs = 1000;
 constexpr int kCoverWaitMs = 3000;
+constexpr qint64 kTransferSettleMs = 6000;
 
 std::optional<LibraryItem::Kind> playlistKind(const QString &contextUri)
 {
@@ -41,6 +43,7 @@ DeviceController::DeviceController(MediaController *media, SpotifyClient *spotif
 {
     connect(m_volume, &VolumeController::spotifyVolumeChanged, this, &DeviceController::spotifyVolumeChanged);
     connect(m_link, &BleLink::messageReceived, this, &DeviceController::onMessage);
+    connect(m_link, &BleLink::problem, this, &DeviceController::deviceError);
     m_pendingTimeout.setSingleShot(true);
     m_pendingTimeout.setInterval(kCoverWaitMs);
     connect(&m_pendingTimeout, &QTimer::timeout, this, &DeviceController::applyPendingColor);
@@ -148,7 +151,42 @@ void DeviceController::sendPlaying(bool playing)
     send(playing ? Command::Resume : Command::Pause);
 }
 
+// The player plays on this computer: while Spotify plays elsewhere (a phone), its next command
+// moves playback here first, and whatever arrives meanwhile waits, in order.
 void DeviceController::onMessage(const MediaSpin::Message &message)
+{
+    const bool acts = message.command != Command::Error && message.command != Command::RequestSync;
+    if (!m_transferring && !(acts && playsElsewhere())) {
+        handle(message);
+        return;
+    }
+    m_waiting.append(message);
+    if (m_transferring)
+        return;
+    m_transferring = true;
+    // a record or a pause would only cut in on the old track playing here for a moment
+    const bool keepPlaying = m_media->state().playing && message.command != Command::SwitchTo
+                             && message.command != Command::Pause;
+    m_spotify->transferHere(keepPlaying, [this](bool ok) {
+        m_transferring = false;
+        if (ok)
+            m_sinceTransfer.start();
+        for (const MediaSpin::Message &waiting : std::exchange(m_waiting, {}))
+            handle(waiting);
+    });
+}
+
+bool DeviceController::playsElsewhere() const
+{
+    // the state still names the old device for a few seconds after the move
+    if (m_sinceTransfer.isValid() && m_sinceTransfer.elapsed() < kTransferSettleMs)
+        return false;
+    const MediaState &state = m_media->state();
+    return m_spotify->isConnected() && state.available && state.remote
+        && state.deviceName.compare(QSysInfo::machineHostName(), Qt::CaseInsensitive) != 0;
+}
+
+void DeviceController::handle(const MediaSpin::Message &message)
 {
     m_sinceFromDevice.start();
     const MediaState &state = m_media->state();

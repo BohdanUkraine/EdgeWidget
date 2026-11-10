@@ -12,6 +12,7 @@
 
 #include <functional>
 
+class QJsonArray;
 class QJsonObject;
 class SpotifyAuth;
 
@@ -68,6 +69,9 @@ public:
     void playerCommand(const QByteArray &verb, const QString &path);
     void setVolume(int percent);
     void fetchVolume(std::function<void(int percent)> done); // -1: Spotify runs nowhere
+    // Playback onto this computer's Spotify (started quietly when it is not running), playing
+    // or paused as asked; done(false) when there is no way to.
+    void transferHere(bool play, std::function<void(bool ok)> done, int attempt = 0);
 
 signals:
     void connectedChanged(bool connected);
@@ -87,6 +91,7 @@ private:
     void setActiveUri(const QString &uri);
     void rememberLastPlayed(const QJsonObject &player);
     void sendVolume();
+    static QJsonObject localDevice(const QJsonArray &devices);
     void onLoggedOut(bool wasConnected);
     void loadLibraryCache();
     void saveLibraryCache() const;

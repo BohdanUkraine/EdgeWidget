@@ -67,6 +67,7 @@ qt_add_executable(EdgeWidget WIN32 MACOSX_BUNDLE
     src/platform/AppInit.h
     src/platform/AppVolume.h
     src/platform/Autostart.h
+    src/platform/BluetoothSupport.h
     src/platform/LocalPlayer.h
     src/platform/SecretStore.h
     src/platform/SpotifyApp.h
@@ -78,6 +79,7 @@ if(WIN32)
         src/platform/win/AppInit.cpp
         src/platform/win/AppVolume.cpp
         src/platform/win/Autostart.cpp
+        src/platform/win/BluetoothSupport.cpp
         src/platform/win/SecretStore.cpp
         src/platform/win/SpotifyApp.cpp
         src/platform/win/WinLocalPlayer.cpp
@@ -93,6 +95,7 @@ elseif(APPLE)
         src/platform/mac/AppInit.cpp
         src/platform/mac/AppVolume.cpp
         src/platform/mac/Autostart.cpp
+        src/platform/mac/BluetoothSupport.cpp
         src/platform/mac/MacLocalPlayer.cpp
         src/platform/mac/SecretStore.cpp
         src/platform/mac/SpotifyApp.mm
@@ -115,6 +118,7 @@ else()
         src/platform/linux/AppInit.cpp
         src/platform/linux/AppVolume.cpp
         src/platform/linux/Autostart.cpp
+        src/platform/linux/BluetoothSupport.cpp
         src/platform/linux/LinuxLocalPlayer.cpp
         src/platform/linux/SecretStore.cpp
         src/platform/linux/SpotifyApp.cpp

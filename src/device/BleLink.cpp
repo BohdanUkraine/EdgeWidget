@@ -1,6 +1,10 @@
 #include "device/BleLink.h"
 
+#include "platform/BluetoothSupport.h"
+
 #include <QBluetoothDeviceDiscoveryAgent>
+#include <QCoreApplication>
+#include <QThread>
 #include <QBluetoothUuid>
 #include <QDebug>
 #include <QLowEnergyController>
@@ -20,6 +24,8 @@ constexpr int kRetryMs = 2000;
 constexpr int kNoAdapterMs = 10000;
 constexpr int kAckMs = 600;
 constexpr int kMaxTries = 4;
+constexpr int kConnectMs = 10000;      // connected and notifying by then, or start over
+constexpr qint64 kRecheckMs = 60000;   // adapter check again on a scan error, at most this often
 }
 
 BleLink::BleLink(QObject *parent)
@@ -37,12 +43,21 @@ BleLink::BleLink(QObject *parent)
     });
     connect(m_agent, &QBluetoothDeviceDiscoveryAgent::errorOccurred, this, [this](QBluetoothDeviceDiscoveryAgent::Error error) {
         qDebug() << "[device] BLE scan error:" << error << m_agent->errorString();
+        if (!m_sinceCheck.isValid() || m_sinceCheck.elapsed() > kRecheckMs)
+            checkAdapter();
         if (!m_controller)
             m_retry.start(kNoAdapterMs);
     });
 
     m_retry.setSingleShot(true);
     connect(&m_retry, &QTimer::timeout, this, &BleLink::scan);
+    m_connectTimeout.setSingleShot(true);
+    m_connectTimeout.setInterval(kConnectMs);
+    connect(&m_connectTimeout, &QTimer::timeout, this, [this] {
+        qDebug() << "[device] BLE: not ready after" << kConnectMs << "ms - starting over";
+        drop(kRetryMs);
+    });
+    QTimer::singleShot(0, this, &BleLink::checkAdapter); // once the owner listens
     m_ackTimer.setSingleShot(true);
     m_ackTimer.setInterval(kAckMs);
     connect(&m_ackTimer, &QTimer::timeout, this, &BleLink::onAckTimeout);
@@ -53,6 +68,37 @@ BleLink::~BleLink()
 {
     if (m_controller)
         m_controller->disconnectFromDevice();
+}
+
+// Otherwise the scan just finds nothing, forever, without a word.
+void BleLink::checkAdapter()
+{
+    m_sinceCheck.start();
+    QPointer<BleLink> self(this);
+    QThread *thread = QThread::create([self] {
+        const BluetoothSupport::State state = BluetoothSupport::check();
+        QMetaObject::invokeMethod(qApp, [self, state] {
+            if (!self)
+                return;
+            qDebug() << "[device] Bluetooth adapter:" << int(state);
+            switch (state) {
+            case BluetoothSupport::State::NoAdapter:
+                emit self->problem(tr("На цьому ПК немає Bluetooth — програвач не підключиться"));
+                break;
+            case BluetoothSupport::State::NoLowEnergy:
+                emit self->problem(tr("Bluetooth цього ПК не підтримує Bluetooth LE — потрібен адаптер Bluetooth 4.0+"));
+                break;
+            case BluetoothSupport::State::Off:
+                emit self->problem(tr("Bluetooth вимкнено — увімкни його, щоб підключити програвач"));
+                break;
+            case BluetoothSupport::State::Ready:
+            case BluetoothSupport::State::Unknown:
+                break;
+            }
+        });
+    });
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    thread->start(QThread::LowPriority);
 }
 
 void BleLink::scan()
@@ -77,6 +123,7 @@ void BleLink::connectTo(const QBluetoothDeviceInfo &info)
 {
     qDebug().noquote() << "[device] BLE: connecting to" << info.name() << info.address().toString();
     m_controller = QLowEnergyController::createCentral(info, this);
+    m_connectTimeout.start();
 
     connect(m_controller, &QLowEnergyController::connected, m_controller, &QLowEnergyController::discoverServices);
     connect(m_controller, &QLowEnergyController::disconnected, this, [this] { drop(kRetryMs); });
@@ -118,6 +165,7 @@ void BleLink::connectTo(const QBluetoothDeviceInfo &info)
             if (m_ready || d.uuid() != QBluetoothUuid(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration))
                 return;
             m_ready = true;
+            m_connectTimeout.stop();
             m_nextSeq = 1;
             qDebug() << "[device] BLE: connected, MTU" << m_controller->mtu();
             emit connectedChanged(true);
@@ -195,6 +243,7 @@ void BleLink::drop(int retryMs)
     m_inFlight = false;
     m_tries = 0;
     m_ackTimer.stop();
+    m_connectTimeout.stop();
     m_rx = {};
     m_tx = {};
     if (m_service)

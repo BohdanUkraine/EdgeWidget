@@ -39,6 +39,8 @@ signals:
 
 private:
     void onMessage(const MediaSpin::Message &message);
+    void handle(const MediaSpin::Message &message);
+    bool playsElsewhere() const;
     void onState(const MediaState &state);
     void setRecord(bool present, const QColor &color);
     void applyPendingColor();
@@ -72,6 +74,10 @@ private:
 
     MediaState m_last;
     QElapsedTimer m_sinceFromDevice;
+
+    bool m_transferring = false;
+    QList<MediaSpin::Message> m_waiting; // arrived while playback was moving here
+    QElapsedTimer m_sinceTransfer;
 
     QString m_playlistContextUri;
     QList<Track> m_playlistTracks;
