@@ -78,6 +78,8 @@ private:
     QPushButton *m_faderPlaylist = nullptr;
     QPushButton *m_volumeSystem = nullptr;
     QPushButton *m_volumeSpotify = nullptr;
+    QSlider *m_platterSpeed = nullptr;
+    QPushButton *m_platterTest = nullptr;
 
     bool m_syncing = false;
     QString m_styleKey;

@@ -24,6 +24,12 @@ const QList<QPair<const char *, const char *>> kEnglish = {
     { "Папка", "Folder" },
     { "Прев'ю плейлиста", "Playlist preview" },
     { "Зараз грає", "Now playing" },
+    { "Підставка", "Platter" },
+    { "Тестово покрутити", "Test spin" },
+    { "Швидкість, з якою крутиться платівка, поки грає музика. Тест — %1 с без музики; "
+      "швидкість можна міняти просто під час тесту.",
+      "How fast the record turns while music plays. The test turns it for %1 s without music; "
+      "change the speed right during the test." },
     { "На цьому ПК немає Bluetooth — програвач не підключиться", "This PC has no Bluetooth — the player can't connect" },
     { "Bluetooth цього ПК не підтримує Bluetooth LE — потрібен адаптер Bluetooth 4.0+",
       "This PC's Bluetooth doesn't support Bluetooth LE — a Bluetooth 4.0+ adapter is needed" },

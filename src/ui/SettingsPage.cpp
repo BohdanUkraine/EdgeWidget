@@ -32,6 +32,7 @@
 
 namespace {
 constexpr int kBorder = 2;
+constexpr int kPlatterTestSec = 5;
 
 const QList<QColor> kSwatches = {
     QColor("#1ED760"), QColor("#3D9BFF"), QColor("#A970FF"), QColor("#F48FB1"),
@@ -305,6 +306,15 @@ void SettingsPage::addPlayerSection(QGridLayout *grid, int &row)
                                                        : AppSettings::VolumeTarget::System);
     });
     addHint(grid, row, tr("Крутилка програвача: гучність усього комп'ютера або лише Spotify."));
+
+    m_platterSpeed = addSlider(grid, row, tr("Підставка"), 0, 100, 5, "%",
+                               [](int v) { AppSettings::instance().setPlatterSpeed(v); });
+    m_platterTest = button(tr("Тестово покрутити"));
+    connect(m_platterTest, &QPushButton::clicked, this, [this] { m_device->testPlatter(kPlatterTestSec); });
+    grid->addWidget(m_platterTest, row++, 1, 1, 2, Qt::AlignLeft);
+    addHint(grid, row, tr("Швидкість, з якою крутиться платівка, поки грає музика. Тест — %1 с без музики; "
+                          "швидкість можна міняти просто під час тесту.")
+                           .arg(kPlatterTestSec));
 }
 
 void SettingsPage::addAboutSection(QGridLayout *grid, int &row)
@@ -331,6 +341,7 @@ QSlider *SettingsPage::addSlider(QGridLayout *grid, int &row, const QString &tit
     auto *value = label({}, "value");
     value->setMinimumWidth(44);
     value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    value->setText(QString::number(min) + unit);
     connect(slider, &QSlider::valueChanged, this, [this, slider, value, unit, step, apply](int v) {
         const int snapped = int(std::lround(double(v) / step)) * step;
         if (snapped != v) {
@@ -397,6 +408,7 @@ void SettingsPage::syncFromSettings()
     m_layer->setCurrentIndex(int(s.layer()));
     (s.faderMode() == AppSettings::FaderMode::Playlist ? m_faderPlaylist : m_faderTimeline)->setChecked(true);
     (s.volumeTarget() == AppSettings::VolumeTarget::Spotify ? m_volumeSpotify : m_volumeSystem)->setChecked(true);
+    m_platterSpeed->setValue(s.platterSpeed());
     m_syncing = false;
     applyStyle();
 }
@@ -417,6 +429,7 @@ void SettingsPage::syncAccount()
 
 void SettingsPage::syncPlayer()
 {
+    m_platterTest->setEnabled(m_device->isConnected());
     if (!m_device->isConnected())
         m_playerStatus->setText(tr("Не підключено. Шукаю програвач…"));
     else if (m_device->hasRecord())

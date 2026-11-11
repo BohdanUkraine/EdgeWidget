@@ -28,6 +28,7 @@ public:
     bool hasRecord() const { return m_hasRecord; }
     QColor recordColor() const { return m_recordColor; }
     bool writeRecord(const QString &uri);
+    void testPlatter(int seconds); // turn the platter that long even without music
 
 signals:
     void connectedChanged(bool connected);
@@ -46,6 +47,7 @@ private:
     void setRecord(bool present, const QColor &color);
     void applyPendingColor();
     void syncDevice();
+    void sendPlatterSpeed();
     void send(MediaSpin::Command command, const QString &data = {});
     void sendPlaying(bool playing);
     void sendModes(const MediaState &state);
@@ -84,6 +86,7 @@ private:
     QList<Track> m_playlistTracks;
     int m_playlistRequestId = 0;
     AppSettings::FaderMode m_lastFaderMode;
+    int m_sentPlatterSpeed = -1;
 
     QTimer m_scrubTimer;
     int m_scrubIndex = -1;

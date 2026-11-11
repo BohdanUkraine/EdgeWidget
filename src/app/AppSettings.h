@@ -28,6 +28,7 @@ public:
     Layer layer() const { return m_layer; }
     FaderMode faderMode() const { return m_faderMode; }
     VolumeTarget volumeTarget() const { return m_volumeTarget; }
+    int platterSpeed() const { return m_platterSpeed; } // percent
 
     void setScale(qreal value);
     void setHandleWidth(int value);
@@ -43,6 +44,7 @@ public:
     void setLayer(Layer value);
     void setFaderMode(FaderMode value);
     void setVolumeTarget(VolumeTarget value);
+    void setPlatterSpeed(int value);
     void resetToDefaults();
 
 signals:
@@ -66,6 +68,7 @@ private:
     Layer m_layer;
     FaderMode m_faderMode;
     VolumeTarget m_volumeTarget;
+    int m_platterSpeed;
 };
 
 inline qreal uiScale()

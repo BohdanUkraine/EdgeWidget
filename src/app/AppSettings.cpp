@@ -12,6 +12,7 @@ constexpr int kDefaultCardHeight = 200;
 constexpr int kDefaultScrubPopupHeight = 52;
 constexpr qreal kDefaultPosition = 1.0;
 const QColor kDefaultAccent(30, 215, 96);
+constexpr int kDefaultPlatterSpeed = 30;
 }
 
 AppSettings &AppSettings::instance()
@@ -40,6 +41,7 @@ AppSettings::AppSettings()
     m_layer = Layer(std::clamp(s.value("layer", int(Layer::AboveWindows)).toInt(), 0, 2));
     m_faderMode = FaderMode(std::clamp(s.value("faderMode", int(FaderMode::Timeline)).toInt(), 0, 1));
     m_volumeTarget = VolumeTarget(std::clamp(s.value("volumeTarget", int(VolumeTarget::Spotify)).toInt(), 0, 1));
+    m_platterSpeed = std::clamp(s.value("platterSpeed", kDefaultPlatterSpeed).toInt(), 0, 100);
 }
 
 void AppSettings::save() const
@@ -60,6 +62,7 @@ void AppSettings::save() const
     s.setValue("layer", int(m_layer));
     s.setValue("faderMode", int(m_faderMode));
     s.setValue("volumeTarget", int(m_volumeTarget));
+    s.setValue("platterSpeed", m_platterSpeed);
 }
 
 #define SETTER(name, member, type)        \
@@ -86,6 +89,7 @@ SETTER(setLanguage, m_language, const QString &)
 SETTER(setLayer, m_layer, Layer)
 SETTER(setFaderMode, m_faderMode, FaderMode)
 SETTER(setVolumeTarget, m_volumeTarget, VolumeTarget)
+SETTER(setPlatterSpeed, m_platterSpeed, int)
 
 #undef SETTER
 
@@ -105,6 +109,7 @@ void AppSettings::resetToDefaults()
     m_layer = Layer::AboveWindows;
     m_faderMode = FaderMode::Timeline;
     m_volumeTarget = VolumeTarget::Spotify;
+    m_platterSpeed = kDefaultPlatterSpeed;
     save();
     emit changed();
 }

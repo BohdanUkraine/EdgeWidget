@@ -53,6 +53,7 @@ DeviceController::DeviceController(MediaController *media, SpotifyClient *spotif
         m_sentPlaying.reset();
         m_sentShuffle.reset();
         m_sentRepeat.reset();
+        m_sentPlatterSpeed = -1;
         if (connected)
             syncDevice();
         else {
@@ -80,6 +81,7 @@ DeviceController::DeviceController(MediaController *media, SpotifyClient *spotif
 
     m_lastFaderMode = AppSettings::instance().faderMode();
     connect(&AppSettings::instance(), &AppSettings::changed, this, [this] {
+        sendPlatterSpeed();
         const AppSettings::FaderMode mode = AppSettings::instance().faderMode();
         if (mode == m_lastFaderMode)
             return;
@@ -107,6 +109,21 @@ bool DeviceController::writeRecord(const QString &uri)
     message.record = MediaSpin::Record{ SpotifyClient::contextUri(uri), 0 };
     m_link->send(message);
     return true;
+}
+
+void DeviceController::testPlatter(int seconds)
+{
+    if (m_link->isConnected())
+        send(Command::PlatterTest, QString::number(seconds));
+}
+
+void DeviceController::sendPlatterSpeed()
+{
+    const int speed = AppSettings::instance().platterSpeed();
+    if (speed == m_sentPlatterSpeed || !m_link->isConnected())
+        return;
+    m_sentPlatterSpeed = speed;
+    send(Command::PlatterSpeed, QString::number(speed));
 }
 
 void DeviceController::setRecord(bool present, const QColor &color)
@@ -307,7 +324,7 @@ void DeviceController::onState(const MediaState &state)
     }
 
     if (!settling) {
-        sendPlaying(playlistMode ? false : state.playing);
+        sendPlaying(state.playing); // in every mode: the platter turns while music plays
         sendModes(state);
     }
 
@@ -321,6 +338,8 @@ void DeviceController::syncDevice()
 {
     const bool playlistMode = AppSettings::instance().faderMode() == AppSettings::FaderMode::Playlist;
     send(Command::SetMode, playlistMode ? QStringLiteral("1") : QStringLiteral("0"));
+    m_sentPlatterSpeed = -1; // the device may have restarted: it keeps the speed in RAM only
+    sendPlatterSpeed();
 
     const MediaState &state = m_media->state();
     if (!state.available)
@@ -331,6 +350,8 @@ void DeviceController::syncDevice()
     m_sentTrack = state.trackKey();
     if (playlistMode) {
         sendPlaylistFaderState();
+        m_sentPlaying.reset();
+        sendPlaying(state.playing);
     } else {
         m_sentPlaying = true;
         send(Command::TrackLen, QString::number(std::lround(state.durationMs / 1000.0)));
@@ -377,8 +398,6 @@ void DeviceController::sendPlaylistFaderState()
 
     send(Command::TrackLen, QString::number(int(m_playlistTracks.size())));
     send(Command::MoveTo, QString::number(index));
-    m_sentPlaying = true;
-    sendPlaying(false);
 }
 
 void DeviceController::playlistTouchStart()

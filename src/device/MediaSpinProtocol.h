@@ -26,6 +26,8 @@ enum class Command : quint32 {
     SetMode = 16,
     FaderTouch = 17,
     RequestSync = 18,
+    PlatterSpeed = 19, // percent
+    PlatterTest = 20,  // seconds, "0" stops
 };
 
 struct Record
