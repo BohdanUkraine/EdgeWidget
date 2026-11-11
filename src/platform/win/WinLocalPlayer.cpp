@@ -33,6 +33,8 @@ QImage readThumbnail(const IRandomAccessStreamReference &ref)
     if (!ref)
         return {};
     auto stream = ref.OpenReadAsync().get();
+    if (!stream)
+        return {};
     const auto size = uint32_t(stream.Size());
     if (size == 0)
         return {};
@@ -70,6 +72,7 @@ public:
         current = nullptr;
         currentId.clear();
         manager = nullptr;
+        last = {};
     }
 
     MediaState poll() override
@@ -78,16 +81,21 @@ public:
         auto s = session();
         if (!s)
             return st;
-        st.available = true;
 
+        // null while Spotify rebuilds its session (seen on a seek): the last state until the next poll
         const auto info = s.GetPlaybackInfo();
+        const auto tl = s.GetTimelineProperties();
+        if (!info || !tl) {
+            sessionsDirty = true;
+            return last;
+        }
+        st.available = true;
         st.playing = info.PlaybackStatus() == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing;
         if (const auto shuffle = info.IsShuffleActive())
             st.shuffle = shuffle.Value();
         if (const auto repeat = info.AutoRepeatMode())
             st.repeat = int(repeat.Value());
 
-        const auto tl = s.GetTimelineProperties();
         auto pos = tl.Position() - tl.StartTime();
         if (st.playing) {
             const auto since = winrt::clock::now() - tl.LastUpdatedTime();
@@ -98,8 +106,13 @@ public:
         st.positionMs = std::clamp<qint64>(toMs(pos), 0, st.durationMs);
         st.sampledAtMs = MediaState::nowMs();
 
+        GlobalSystemMediaTransportControlsSessionMediaProperties props{ nullptr };
         if (propsDirty.exchange(false) || (cover.isNull() && coverAttempts < 6)) {
-            const auto props = s.TryGetMediaPropertiesAsync().get();
+            props = s.TryGetMediaPropertiesAsync().get();
+            if (!props)
+                propsDirty = true; // the same rebuild: next poll
+        }
+        if (props) {
             const QString t = toQString(props.Title());
             const QString a = toQString(props.Artist());
             const QString al = toQString(props.AlbumTitle());
@@ -122,6 +135,7 @@ public:
         st.artist = artist;
         st.album = album;
         st.cover = cover;
+        last = st;
         return st;
     }
 
@@ -206,6 +220,7 @@ private:
     QString title, artist, album;
     QImage cover;
     int coverAttempts = 0;
+    MediaState last;
 };
 }
 
