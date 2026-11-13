@@ -29,6 +29,7 @@ struct LibraryItem
     QString snapshot;     // playlists: changes whenever the contents do
     int total = -1;       // playlists: items, tracks or not; -1 unknown
     QString folder;       // uri of the folder it sits in (desktop app's library); empty: top level
+    QString label;        // shown instead of the kind, e.g. "Сингл"; not cached
 };
 
 struct Track
@@ -59,6 +60,8 @@ public:
     void refreshLibrary();
     void fetchTracks(const LibraryItem &item, std::function<void(const QList<Track> &tracks, bool ok)> done);
     void fetchImage(const QString &url, QObject *context, std::function<void(const QImage &)> done);
+    // Albums, singles and compilations, each kind newest first; owner is the release year.
+    void fetchArtistAlbums(const QString &artistUri, std::function<void(const QList<LibraryItem> &albums, bool ok)> done);
     // From the library, else from the API; an empty uri when neither knows it.
     void fetchItem(const QString &uri, std::function<void(const LibraryItem &item)> done);
 
@@ -88,6 +91,8 @@ private:
     void fetchPage(const QString &path, LibraryItem::Kind kind, QList<LibraryItem> collected,
                    std::function<void(QList<LibraryItem>, bool ok)> done);
     void fetchTrackPage(const QString &path, QList<Track> collected, std::function<void(QList<Track>, int status)> done);
+    void fetchArtistAlbumPage(const QString &path, QList<LibraryItem> collected,
+                              std::function<void(const QList<LibraryItem> &, bool)> done);
     void startPlayback(const QByteArray &body);
     void playOnAnyDevice(const QByteArray &body, int attempt = 0);
     void setActiveUri(const QString &uri);

@@ -134,6 +134,8 @@ QString itemSubtitle(const LibraryItem &item)
     case LibraryItem::Artist: kind = QObject::tr("Виконавець"); break;
     case LibraryItem::Folder: kind = QObject::tr("Папка"); break;
     }
+    if (!item.label.isEmpty())
+        kind = item.label;
     return item.owner.isEmpty() ? kind : kind + QStringLiteral(" • ") + item.owner;
 }
 
@@ -194,7 +196,7 @@ void paintRow(QPainter &p, const QFont &base, const QRect &row, const LibraryIte
     }
 
     const QRect nfc = nfcRect(row);
-    if (folder) {
+    if (folder || item.kind == LibraryItem::Artist) { // opens a page: an arrow, no record
         const QPointF c = QRectF(nfc).center();
         p.setPen(QPen(state.hovered ? th().text : th().subText, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
         p.setBrush(Qt::NoBrush);

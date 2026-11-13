@@ -6,6 +6,7 @@
 #include <QToolTip>
 
 #include <algorithm>
+#include <utility>
 
 using namespace LibraryStyle;
 
@@ -31,7 +32,7 @@ LibraryView::LibraryView(SpotifyClient *spotify, CoverCache *covers, QWidget *pa
     });
     connect(&m_detailAnim, &QVariantAnimation::finished, this, [this] {
         if (!m_detailOpen) {
-            m_detail = -1;
+            m_detail = false;
             update();
         }
     });
@@ -50,11 +51,10 @@ LibraryView::LibraryView(SpotifyClient *spotify, CoverCache *covers, QWidget *pa
         update();
     });
     connect(&m_scrollAnim, &QVariantAnimation::finished, this, [this] {
-        const auto &lib = m_spotify->library();
-        const auto it = std::find_if(lib.begin(), lib.end(), [this](const LibraryItem &i) { return i.uri == m_revealUri; });
-        m_revealUri.clear();
-        if (it != lib.end())
-            openDetail(int(it - lib.begin()));
+        const QString uri = std::exchange(m_revealUri, {});
+        const int row = rowOf(folder(), uri);
+        if (row >= 0)
+            activate(items(folder()).at(row), row);
     });
 
     connect(m_spotify, &SpotifyClient::libraryChanged, this, [this] {
@@ -66,15 +66,8 @@ LibraryView::LibraryView(SpotifyClient *spotify, CoverCache *covers, QWidget *pa
         }
         emit pageChanged(); // also covers a renamed folder
         m_scroll.clamp(maxScroll());
-        if (m_detail >= 0) {
-            const auto &lib = m_spotify->library();
-            const auto it = std::find_if(lib.begin(), lib.end(),
-                                         [this](const LibraryItem &i) { return i.uri == m_detailUri; });
-            if (it == lib.end())
-                closeDetail();
-            else
-                m_detail = int(it - lib.begin());
-        }
+        if (m_detail && rowOf(folder(), m_detailUri) < 0)
+            closeDetail();
         update();
     });
     connect(m_spotify, &SpotifyClient::activeChanged, this, qOverload<>(&QWidget::update));
@@ -94,15 +87,26 @@ void LibraryView::setPlaying(bool playing)
     update();
 }
 
-QList<int> LibraryView::rows(const QString &folder) const
+QList<LibraryItem> LibraryView::items(const QString &page) const
 {
-    QList<int> out;
-    const auto &lib = m_spotify->library();
-    for (int i = 0; i < lib.size(); ++i) {
-        if (lib.at(i).folder == folder && passes(lib.at(i)))
+    if (isArtist(page))
+        return m_artistAlbums.value(page); // the artist's own page: no filter
+    QList<LibraryItem> out;
+    for (const LibraryItem &i : m_spotify->library()) {
+        if (i.folder == page && passes(i))
             out.append(i);
     }
     return out;
+}
+
+int LibraryView::rowOf(const QString &page, const QString &uri) const
+{
+    const QList<LibraryItem> shown = items(page);
+    for (int row = 0; row < shown.size(); ++row) {
+        if (shown.at(row).uri == uri)
+            return row;
+    }
+    return -1;
 }
 
 bool LibraryView::passes(const LibraryItem &item) const
@@ -151,7 +155,8 @@ bool LibraryView::contains(const QString &folder, const QString &uri) const
     return false;
 }
 
-// Folders from the top level down to `folder`; empty when it is not in the library.
+// Folders from the top level down to `folder` (an artist's page is the last); empty when it is
+// not in the library.
 QStringList LibraryView::pathTo(const QString &folder) const
 {
     QStringList path;
@@ -159,7 +164,7 @@ QStringList LibraryView::pathTo(const QString &folder) const
     while (!f.isEmpty() && path.size() < 32) {
         const auto &lib = m_spotify->library();
         const auto it = std::find_if(lib.begin(), lib.end(), [&f](const LibraryItem &i) {
-            return i.uri == f && i.kind == LibraryItem::Folder;
+            return i.uri == f && (i.kind == LibraryItem::Folder || i.kind == LibraryItem::Artist);
         });
         if (it == lib.end())
             return {};
@@ -176,14 +181,12 @@ QRect LibraryView::rowRect(int position, int offset) const
 
 int LibraryView::maxScroll() const
 {
-    return std::max(0, int(rows(folder()).size()) * kRowH - int(lh()));
+    return std::max(0, int(items(folder()).size()) * kRowH - int(lh()));
 }
 
-void LibraryView::openDetail(int index)
+void LibraryView::openDetail(const LibraryItem &item, int row)
 {
-    const LibraryItem item = m_spotify->library().at(index);
-    const int position = int(rows(folder()).indexOf(index));
-    m_detail = index;
+    m_detail = true;
     m_detailUri = item.uri;
     m_detailOpen = true;
     m_hover = {};
@@ -191,7 +194,7 @@ void LibraryView::openDetail(int index)
     m_detailAnim.setStartValue(m_detailT);
     m_detailAnim.setEndValue(1.0);
     m_detailAnim.start();
-    const int top = position >= 0 ? rowRect(position, m_scroll.offset).top() : 0;
+    const int top = row >= 0 ? rowRect(row, m_scroll.offset).top() : 0;
     emit detailOpened(item, mapToGlobal(QPointF(0, top * uiScale()).toPoint()).y());
 }
 
@@ -231,6 +234,29 @@ void LibraryView::openFolder(const QString &uri)
     slide(from, fromOffset, true);
 }
 
+void LibraryView::openArtist(const QString &uri)
+{
+    if (m_artistState.value(uri, Albums::Failed) == Albums::Failed) { // not asked yet, or try again
+        m_artistState.insert(uri, Albums::Loading);
+        m_spotify->fetchArtistAlbums(uri, [this, uri](const QList<LibraryItem> &albums, bool ok) {
+            m_artistAlbums.insert(uri, albums);
+            m_artistState.insert(uri, ok ? Albums::Ready : Albums::Failed);
+            if (folder() == uri)
+                m_scroll.clamp(maxScroll());
+            update();
+        });
+    }
+    openFolder(uri);
+}
+
+void LibraryView::activate(const LibraryItem &item, int row)
+{
+    if (item.kind == LibraryItem::Artist)
+        openArtist(item.uri);
+    else
+        openDetail(item, row);
+}
+
 void LibraryView::goBack()
 {
     if (m_path.isEmpty())
@@ -250,10 +276,10 @@ bool LibraryView::reveal(const QString &uri)
     const auto it = std::find_if(lib.begin(), lib.end(), [&uri](const LibraryItem &i) { return i.uri == uri; });
     if (uri.isEmpty() || it == lib.end())
         return false;
-    const int index = int(it - lib.begin());
-    if (!passes(*it))
+    const LibraryItem item = *it;
+    if (!passes(item))
         setFilter(Filter::All);
-    const QStringList path = pathTo(it->folder);
+    const QStringList path = pathTo(item.folder);
     if (path != m_path) {
         // straight to its folder: the way back still goes up level by level
         m_path = path;
@@ -264,11 +290,14 @@ bool LibraryView::reveal(const QString &uri)
         emit pageChanged();
     }
     if (m_detailOpen) {
-        if (m_detailUri != uri)
-            openDetail(index); // the list is covered: just switch what the popup shows
-        return true;
+        if (item.kind != LibraryItem::Artist) {
+            if (m_detailUri != uri)
+                openDetail(item, rowOf(folder(), uri)); // the list is covered: just switch what the popup shows
+            return true;
+        }
+        closeDetail();
     }
-    const int top = int(rows(folder()).indexOf(index)) * kRowH;
+    const int top = rowOf(folder(), uri) * kRowH;
     const int listH = int(lh());
     int target = m_scroll.offset;
     if (top < m_scroll.offset || top + kRowH > m_scroll.offset + listH)
@@ -283,15 +312,14 @@ bool LibraryView::reveal(const QString &uri)
 
 LibraryView::Hover LibraryView::hitTest(const QPoint &pos) const
 {
-    if (!m_spotify->isConnected() || m_detail >= 0 || m_slideT < 1.0 || !logicalRect().contains(pos))
+    if (!m_spotify->isConnected() || m_detail || m_slideT < 1.0 || !logicalRect().contains(pos))
         return {};
     Hover h;
-    const QList<int> shown = rows(folder());
-    const int position = (pos.y() + m_scroll.offset) / kRowH;
-    if (position < 0 || position >= shown.size())
+    const int row = (pos.y() + m_scroll.offset) / kRowH;
+    if (row < 0 || row >= items(folder()).size())
         return {};
-    h.index = shown.at(position);
-    h.part = partAt(rowRect(position, m_scroll.offset), pos);
+    h.row = row;
+    h.part = partAt(rowRect(row, m_scroll.offset), pos);
     return h;
 }
 
@@ -305,7 +333,7 @@ void LibraryView::paintEvent(QPaintEvent *)
         return;
     }
 
-    if (m_detail < 0 || m_detailT < 1.0) {
+    if (!m_detail || m_detailT < 1.0) {
         p.save();
         p.setOpacity(std::max(0.0, 1.0 - 2.0 * m_detailT));
         if (m_slideT < 1.0) {
@@ -319,32 +347,43 @@ void LibraryView::paintEvent(QPaintEvent *)
         }
         p.restore();
     }
-    if (m_detail >= 0 || m_slideT < 1.0)
+    if (m_detail || m_slideT < 1.0)
         return;
 
-    const int contentH = int(rows(folder()).size()) * kRowH;
+    const int contentH = int(items(folder()).size()) * kRowH;
     paintEdgeFades(p, logicalRect(), m_scroll.offset, maxScroll());
-    if (m_hover.index >= 0 || m_scroll.dragged)
+    if (m_hover.row >= 0 || m_scroll.dragged)
         paintScrollbar(p, QRectF(logicalRect()).adjusted(0, 0, -1, 0), contentH, m_scroll.offset, maxScroll());
 }
 
 void LibraryView::paintPage(QPainter &p, const QString &folder, int offset, qreal dx, bool interactive)
 {
-    const auto &items = m_spotify->library();
-    const QList<int> shown = rows(folder);
+    const QList<LibraryItem> shown = items(folder);
     p.save();
     p.setClipRect(logicalRect());
     p.translate(dx, 0);
+    if (shown.isEmpty() && isArtist(folder)) {
+        const Albums state = m_artistState.value(folder, Albums::Loading);
+        QFont f = font();
+        f.setPixelSize(12);
+        p.setFont(f);
+        p.setPen(th().subText);
+        p.drawText(logicalRect(), Qt::AlignCenter,
+                   state == Albums::Loading  ? tr("Завантажую альбоми…")
+                   : state == Albums::Failed ? tr("Не вдалося завантажити альбоми")
+                                             : tr("Тут порожньо"));
+        p.restore();
+        return;
+    }
     const int listH = int(lh());
     const int first = offset / kRowH;
     const int last = std::min(int(shown.size()) - 1, (offset + listH) / kRowH);
     for (int pos = std::max(0, first); pos <= last; ++pos) {
-        const int i = shown.at(pos);
-        if (i == m_detail)
+        const LibraryItem &item = shown.at(pos);
+        if (m_detail && item.uri == m_detailUri)
             continue;
-        const LibraryItem &item = items.at(i);
         RowState state;
-        state.hovered = interactive && m_hover.index == i && !m_scroll.dragged;
+        state.hovered = interactive && m_hover.row == pos && !m_scroll.dragged;
         state.hoverPart = state.hovered ? m_hover.part : RowPart::None;
         state.active = item.kind == LibraryItem::Folder ? contains(item.uri, m_spotify->activeUri())
                                                         : item.uri == m_spotify->activeUri();
@@ -382,7 +421,7 @@ void LibraryView::paintPlaceholder(QPainter &p)
 
 void LibraryView::wheelEvent(QWheelEvent *event)
 {
-    if (m_detail >= 0) {
+    if (m_detail) {
         event->ignore();
         return;
     }
@@ -401,16 +440,16 @@ void LibraryView::mousePressEvent(QMouseEvent *event)
 void LibraryView::mouseMoveEvent(QMouseEvent *event)
 {
     const QPoint pos = logical(event->position());
-    if (m_detail < 0 && m_slideT >= 1.0 && m_scroll.drag(pos.y(), maxScroll())) {
+    if (!m_detail && m_slideT >= 1.0 && m_scroll.drag(pos.y(), maxScroll())) {
         update();
         return;
     }
 
     const Hover hover = hitTest(pos);
-    setCursor(hover.index >= 0 || !m_spotify->isConnected() ? Qt::PointingHandCursor : Qt::ArrowCursor);
-    if (hover.index != m_hover.index || hover.part != m_hover.part) {
-        const bool folderRow = hover.index >= 0 && m_spotify->library().at(hover.index).kind == LibraryItem::Folder;
-        if (hover.part == RowPart::Nfc && !folderRow)
+    setCursor(hover.row >= 0 || !m_spotify->isConnected() ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    if (hover.row != m_hover.row || hover.part != m_hover.part) {
+        const LibraryItem::Kind kind = hover.row >= 0 ? items(folder()).at(hover.row).kind : LibraryItem::Album;
+        if (hover.part == RowPart::Nfc && kind != LibraryItem::Folder && kind != LibraryItem::Artist)
             QToolTip::showText(event->globalPosition().toPoint(), nfcTooltip(), this);
         else if (m_hover.part == RowPart::Nfc)
             QToolTip::hideText();
@@ -433,9 +472,9 @@ void LibraryView::mouseReleaseEvent(QMouseEvent *event)
     }
 
     const Hover hit = hitTest(logical(event->position()));
-    if (hit.index < 0)
+    if (hit.row < 0)
         return;
-    const LibraryItem item = m_spotify->library().at(hit.index);
+    const LibraryItem item = items(folder()).at(hit.row);
     if (item.kind == LibraryItem::Folder) {
         openFolder(item.uri);
         return;
@@ -448,10 +487,13 @@ void LibraryView::mouseReleaseEvent(QMouseEvent *event)
             m_spotify->play(item.uri);
         break;
     case RowPart::Nfc:
-        emit writeRecordRequested(item);
+        if (item.kind == LibraryItem::Artist)
+            openArtist(item.uri); // its arrow
+        else
+            emit writeRecordRequested(item);
         break;
     case RowPart::Text:
-        openDetail(hit.index);
+        activate(item, hit.row);
         break;
     case RowPart::None:
         break;

@@ -50,6 +50,7 @@ QString tracklessPath()
 }
 
 constexpr int kMaxRecent = 200;
+constexpr int kMaxArtistAlbums = 200;
 // Playlists up to this size get one request to see whether they hold any tracks (the API
 // counts podcast episodes and unavailable items too); bigger ones surely do.
 constexpr int kCheckMaxItems = 100;
@@ -413,6 +414,52 @@ void SpotifyClient::fetchImage(const QString &url, QObject *context, std::functi
     connect(reply, &QNetworkReply::finished, context, [reply, done] {
         reply->deleteLater();
         done(QImage::fromData(reply->readAll()));
+    });
+}
+
+void SpotifyClient::fetchArtistAlbums(const QString &artistUri,
+                                      std::function<void(const QList<LibraryItem> &albums, bool ok)> done)
+{
+    fetchArtistAlbumPage("/artists/" + artistUri.section(':', -1)
+                             + "/albums?include_groups=album,single,compilation&limit=50",
+                         {}, std::move(done));
+}
+
+void SpotifyClient::fetchArtistAlbumPage(const QString &path, QList<LibraryItem> collected,
+                                         std::function<void(const QList<LibraryItem> &, bool)> done)
+{
+    request("GET", path, {}, [=](int status, const QByteArray &body) mutable {
+        if (status != 200) {
+            if (status != 0)
+                emit error(apiError(status, body));
+            done(collected, false);
+            return;
+        }
+        const QJsonObject page = QJsonDocument::fromJson(body).object();
+        for (const QJsonValue &v : page["items"].toArray()) {
+            const QJsonObject o = v.toObject();
+            const QString type = o["album_type"].toString();
+            LibraryItem item;
+            item.kind = LibraryItem::Album;
+            item.uri = o["uri"].toString();
+            item.name = o["name"].toString();
+            item.owner = o["release_date"].toString().left(4);
+            item.imageUrl = pickImage(o["images"].toArray());
+            item.label = type == QLatin1String("single")        ? tr("Сингл")
+                         : type == QLatin1String("compilation") ? tr("Збірка")
+                                                                  : tr("Альбом");
+            // the same release once per market or edition: the first (newest) stays
+            const bool seen = std::any_of(collected.cbegin(), collected.cend(), [&item](const LibraryItem &i) {
+                return i.label == item.label && i.name.compare(item.name, Qt::CaseInsensitive) == 0;
+            });
+            if (!seen && !item.uri.isEmpty())
+                collected.append(item);
+        }
+        const QString next = page["next"].toString();
+        if (!next.isEmpty() && collected.size() < kMaxArtistAlbums)
+            fetchArtistAlbumPage(next, collected, done);
+        else
+            done(collected, true);
     });
 }
 

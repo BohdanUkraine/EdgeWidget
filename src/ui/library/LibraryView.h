@@ -6,8 +6,8 @@
 #include <QVariantAnimation>
 
 // The library list. Folders open as pages sliding in from the right; one stays open until
-// LibraryCard's arrow takes it back (collapsing the panel keeps it). A filter narrows the
-// list to one kind.
+// LibraryCard's arrow takes it back (collapsing the panel keeps it). An artist opens the same
+// way, as a page of their albums from the API. A filter narrows the list to one kind.
 class LibraryView : public ScaledWidget
 {
     Q_OBJECT
@@ -46,20 +46,26 @@ protected:
 private:
     struct Hover
     {
-        int index = -1; // into the library
+        int row = -1; // on the open page
         LibraryStyle::RowPart part = LibraryStyle::RowPart::None;
     };
 
+    enum class Albums { Loading, Failed, Ready };
+
     QString folder() const { return m_path.isEmpty() ? QString() : m_path.last(); }
-    QList<int> rows(const QString &folder) const; // library indexes shown in that folder, in order
+    static bool isArtist(const QString &page) { return page.startsWith(QLatin1String("spotify:artist:")); }
+    QList<LibraryItem> items(const QString &page) const; // shown on that page, in order
+    int rowOf(const QString &page, const QString &uri) const;
     bool passes(const LibraryItem &item) const;   // through the filter
     bool contains(const QString &folder, const QString &uri) const; // anywhere below it
     QStringList pathTo(const QString &folder) const;
     QRect rowRect(int position, int offset) const;
     int maxScroll() const;
     Hover hitTest(const QPoint &pos) const;
-    void openDetail(int index);
+    void openDetail(const LibraryItem &item, int row);
     void openFolder(const QString &uri);
+    void openArtist(const QString &uri);
+    void activate(const LibraryItem &item, int row); // what a click on its name does
     void slide(const QString &fromFolder, int fromOffset, bool forward);
     void paintPage(QPainter &p, const QString &folder, int offset, qreal dx, bool interactive);
     void paintPlaceholder(QPainter &p);
@@ -79,7 +85,7 @@ private:
     int m_slideFromOffset = 0;
     bool m_slideForward = true;
 
-    int m_detail = -1; // into the library
+    bool m_detail = false; // shown, or still fading out
     bool m_detailOpen = false;
     qreal m_detailT = 0.0;
     QVariantAnimation m_detailAnim;
@@ -87,4 +93,7 @@ private:
 
     QVariantAnimation m_scrollAnim;
     QString m_revealUri; // opens when the scroll gets there
+
+    QHash<QString, QList<LibraryItem>> m_artistAlbums;
+    QHash<QString, Albums> m_artistState;
 };
